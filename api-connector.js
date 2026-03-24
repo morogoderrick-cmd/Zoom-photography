@@ -10,7 +10,7 @@
 //      const API_URL = 'https://your-backend.onrender.com' (live)
 // ============================================================
 
-const API_URL = 'http://localhost:5000'; // ← change to your deployed URL when live
+const API_URL = 'https://zoom-photography.onrender.com'; // ← change to your deployed URL when live
 
 // ─────────────────────────────────────────────
 //  1. CONTACT FORM HANDLER
