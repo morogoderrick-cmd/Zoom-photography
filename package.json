@@ -1,0 +1,24 @@
+{
+  "name": "zoom-photography-backend",
+  "version": "1.0.0",
+  "description": "Backend server for ZOOM Photography & Videography website",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.3",
+    "express-rate-limit": "^7.2.0",
+    "mongoose": "^8.3.1",
+    "nodemailer": "^6.9.13"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  },
+  "keywords": ["photography", "videography", "zoom", "kenya"],
+  "author": "ZOOM Photography & Videography",
+  "license": "ISC"
+}
