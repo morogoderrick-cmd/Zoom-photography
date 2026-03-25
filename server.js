@@ -295,6 +295,12 @@ function verifyAdmin(req, res, next) {
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+// Keep alive ping
+const https = require('https');
+setInterval(() => {
+  https.get('https://zoom-photography.onrender.com/api/health');
+  console.log('Keep alive ping sent');
+}, 14 * 60 * 1000); // ping every 14 minutes
 
 // ─── START SERVER ─────────────────────────────────────────────
 app.listen(PORT, () => {
