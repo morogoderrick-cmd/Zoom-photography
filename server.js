@@ -299,12 +299,14 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 // Keep alive ping
-const https = require('https');
 setInterval(() => {
-  https.get('https://zoom-photography.onrender.com/api/health');
-  console.log('Keep alive ping sent');
-}, 14 * 60 * 1000); // ping every 14 minutes
-
+  const https = require('https');
+  https.get('https://zoom-photography.onrender.com/api/health', (res) => {
+    console.log(`Keep alive: ${res.statusCode}`);
+  }).on('error', (e) => {
+    console.log('Keep alive error:', e.message);
+  });
+}, 840000);
 // ─── START SERVER ─────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`\n🚀  ZOOM Backend running at http://localhost:${PORT}`);
