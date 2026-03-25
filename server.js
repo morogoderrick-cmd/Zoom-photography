@@ -79,10 +79,12 @@ const Booking = mongoose.model('Booking', bookingSchema);
 
 // ─── EMAIL TRANSPORTER ────────────────────────────────────────
 const transporter = nodemailer.createTransport({
-  service : 'gmail',
-  auth    : {
-    user : process.env.EMAIL_USER,  // your Gmail address
-    pass : process.env.EMAIL_PASS,  // your Gmail app password
+  host   : 'smtp.gmail.com',
+  port   : 465,
+  secure : true,
+  auth   : {
+    user : process.env.EMAIL_USER,
+    pass : process.env.EMAIL_PASS,
   }
 });
 
