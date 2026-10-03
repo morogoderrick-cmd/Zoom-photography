@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>ZOOM Control Panel</title>
+<style>
+:root{--pink:#ff4d8d;--orange:#ff7c2a;--yellow:#ffd234;--teal:#00c9a7;--dark:#0f0f1a;--darker:#07070f;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--darker);color:#fff;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;min-height:100vh;padding:1.5rem 1rem 4rem;}
+.wrap{max-width:820px;margin:0 auto;}.hide{display:none!important;}
+h1{font-size:1.7rem;letter-spacing:.06em;background:linear-gradient(90deg,var(--pink),var(--orange));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.top{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:1rem;}
+.tabs{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem;}
+.tab{margin:0;padding:.5rem 1.1rem;background:rgba(255,255,255,.07);color:#fff;border:1px solid rgba(255,255,255,.14);}
+.tab[aria-selected="true"]{background:linear-gradient(135deg,var(--pink),var(--orange));color:var(--dark);border-color:transparent;}
+.card{background:#12121f;border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:1.3rem;margin-bottom:1.1rem;}
+.card h2{font-size:1.05rem;margin-bottom:.8rem;color:var(--yellow);}
+label{display:block;font-size:.72rem;color:rgba(255,255,255,.65);margin:.8rem 0 .3rem;font-weight:700;}
+label.chk{display:inline-block;margin:.3rem 1rem .3rem 0;font-size:.82rem;color:#fff;font-weight:600;}
+input,textarea,select{width:100%;padding:.65rem .9rem;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#fff;font:inherit;font-size:.88rem;}
+select option{background:#12121f;}input[type=checkbox]{width:auto;}
+input:focus,textarea:focus,select:focus,button:focus-visible,a:focus-visible{outline:2px solid var(--yellow);outline-offset:2px;}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:0 1rem;}.full{grid-column:1/-1;}
+@media(max-width:560px){.row{grid-template-columns:1fr;}}
+button,.lk{margin-top:.9rem;padding:.6rem 1.3rem;border:none;border-radius:50px;font-weight:800;cursor:pointer;color:var(--dark);background:linear-gradient(135deg,var(--pink),var(--orange));font-size:.8rem;text-decoration:none;display:inline-block;font-family:inherit;}
+button.alt{background:rgba(255,255,255,.1);color:#fff;margin-left:.4rem;}
+.msg{font-size:.85rem;min-height:1.3rem;margin-bottom:.6rem;}
+.item{display:flex;gap:.8rem;justify-content:space-between;padding:.9rem 0;border-bottom:1px solid rgba(255,255,255,.08);flex-wrap:wrap;}
+.info{min-width:220px;flex:1;}.info b{display:block;font-size:.95rem;}
+.role{color:var(--orange);font-size:.78rem;font-weight:700;}
+.info small{color:rgba(255,255,255,.6);font-size:.76rem;display:block;margin-top:.15rem;word-break:break-word;}
+.warn{color:var(--pink)!important;font-weight:700;}
+.btns{display:flex;gap:.35rem;flex-wrap:wrap;align-items:flex-start;}
+.btns button,.btns .lk,.mini{margin:0;padding:.38rem .9rem;font-size:.73rem;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.25);color:#fff;}
+.btns select.mini{width:auto;border-radius:50px;}
+.btns .go{background:rgba(0,201,167,.15);border-color:rgba(0,201,167,.5);color:var(--teal);}
+.btns .wa{background:rgba(37,211,102,.15);border-color:rgba(37,211,102,.5);color:#25d366;}
+.btns .del,.del{background:rgba(255,77,141,.15);border-color:rgba(255,77,141,.4);color:var(--pink);}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin-bottom:1.1rem;}
+.stat{background:#12121f;border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:1.1rem;text-align:center;}
+.stat b{display:block;font-size:1.7rem;color:var(--yellow);}.stat span{font-size:.75rem;color:rgba(255,255,255,.6);}
+.empty{color:rgba(255,255,255,.5);font-size:.85rem;padding:.5rem 0;}
+.paybox{flex-basis:100%;background:rgba(255,255,255,.04);border-radius:14px;padding:.8rem 1rem;}
+.prow{display:flex;justify-content:space-between;align-items:center;gap:.5rem;font-size:.82rem;padding:.3rem 0;}
+.calhd{display:flex;justify-content:space-between;align-items:center;}.calhd button{margin:0;}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:.8rem;}
+.dow{font-size:.7rem;color:rgba(255,255,255,.5);text-align:center;}
+.cell{min-height:62px;background:rgba(255,255,255,.04);border-radius:8px;padding:3px;overflow:hidden;}
+.cell.off{background:none;}.cell.clash{background:rgba(255,77,141,.22);outline:1px solid var(--pink);}
+.dn{font-size:.68rem;color:rgba(255,255,255,.55);}
+.chip{font-size:.62rem;background:var(--teal);color:var(--dark);border-radius:4px;padding:1px 3px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700;}
+#lock{max-width:380px;margin:12vh auto 0;}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+</style>
+</head>
+<body>
+
+<div id="lock" class="card">
+  <h1>ZOOM ADMIN</h1>
+  <label for="em">Email</label><input id="em" type="email" autocomplete="username">
+  <label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password">
+  <button id="go">Log in</button>
+  <p class="msg" id="lm" role="status" style="margin-top:.8rem"></p>
+</div>
+
+<div class="wrap hide" id="app">
+  <div class="top"><h1>ZOOM CONTROL PANEL</h1><button class="alt" id="out" style="margin:0">Log out</button></div>
+  <div class="tabs" id="tabs" role="tablist"></div>
+  <p class="msg" id="toast" role="status"></p>
+  <div id="view"></div>
+</div>
+
+<script>
+(function(){
+var API='https://zoom-photography.onrender.com'; /* change to http://localhost:3000 when testing locally */
+var $=function(i){return document.getElementById(i);};
+var tok='';try{tok=sessionStorage.getItem('zt')||'';}catch(e){}
+var cache={team:[]},cur='dash',VIEWS={};
+var ENQ=['new','contacted','quoted','booked','closed'],BS=['pending','confirmed','completed','cancelled'],DL=['not started','shot','editing','gallery sent','album printed','delivered'],EXC=['Transport','Gear / equipment','Software','Marketing','Other'];
+var today=new Date().toISOString().slice(0,10);
+
+function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e;}
+function btn(t,c,f){var b=el('button',c||'',t);b.onclick=f;return b;}
+function lnk(t,c,h,blank){var a=el('a','lk '+(c||''),t);a.href=h;if(blank){a.target='_blank';a.rel='noopener noreferrer';}return a;}
+function say(m,err){var t=$('toast');t.textContent=m||'';t.style.color=err?'#ff4d8d':'#ffd234';}
+function ksh(n){return 'Ksh '+Number(n||0).toLocaleString('en-US');}
+function day(d){return d?String(d).slice(0,10):'';}
+function nice(d){return d?new Date(day(d)+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'No date';}
+function tid(m){return m&&m._id?m._id:m;}
+function intl(p){var d=String(p||'').replace(/\D/g,'');if(!d)return '';if(d.indexOf('254')===0)return d;if(d[0]==='0')return '254'+d.slice(1);return d.length===9?'254'+d:d;}
+
+async function api(p,m,b){
+  var r=await fetch(API+'/api'+p,{method:m||'GET',headers:Object.assign({'Content-Type':'application/json'},tok?{Authorization:'Bearer '+tok}:{}),body:b?JSON.stringify(b):undefined});
+  var d=await r.json().catch(function(){return {};});
+  if(r.status===401&&tok){logout();throw new Error('Session expired. Please log in again.');}
+  if(!r.ok)throw new Error(d.message||'Request failed.');
+  return d;
+}
+
+/* ---------- form builder ---------- */
+function form(title,fields,v,save,cancel,label){
+  v=v||{};var box=el('div','card'),row=el('div','row'),get={};
+  box.appendChild(el('h2','',title));box.appendChild(row);
+  fields.forEach(function(f){
+    var w=el('div',f.t==='area'||f.t==='team'||f.full?'full':''),id='f'+Math.random().toString(36).slice(2,8),inp;
+    if(f.t==='check'){
+      inp=el('input');inp.type='checkbox';inp.checked=!!v[f.k];var l=el('label','chk');l.appendChild(inp);l.appendChild(document.createTextNode(' '+f.l));w.appendChild(l);
+      get[f.k]=function(){return inp.checked;};
+    }else if(f.t==='team'){
+      w.appendChild(el('label','',f.l));var sel=(v[f.k]||[]).map(tid),bx=[];
+      cache.team.forEach(function(m){var l=el('label','chk'),c=el('input');c.type='checkbox';c.value=m._id;c.checked=sel.indexOf(m._id)>-1;bx.push(c);l.appendChild(c);l.appendChild(document.createTextNode(' '+m.name));w.appendChild(l);});
+      if(!bx.length)w.appendChild(el('p','empty','No team members yet. Add them in the Team tab.'));
+      get[f.k]=function(){return bx.filter(function(c){return c.checked;}).map(function(c){return c.value;});};
+    }else{
+      var l2=el('label','',f.l);l2.htmlFor=id;w.appendChild(l2);
+      if(f.t==='select'){inp=el('select');f.o.forEach(function(o){var op=el('option','',o);op.value=o;inp.appendChild(op);});inp.value=v[f.k]||f.o[0];}
+      else if(f.t==='area'){inp=el('textarea');inp.rows=f.rows||3;inp.value=v[f.k]||'';}
+      else{inp=el('input');inp.type=f.t||'text';inp.value=f.t==='date'?(f.md&&v[f.k]?'2000-'+v[f.k]:day(v[f.k])):(v[f.k]==null?'':v[f.k]);if(f.p)inp.placeholder=f.p;}
+      inp.id=id;w.appendChild(inp);get[f.k]=function(){return inp.value.trim?inp.value.trim():inp.value;};
+    }
+    row.appendChild(w);
+  });
+  box.appendChild(btn(label||'Save','',async function(){var o={};Object.keys(get).forEach(function(k){o[k]=get[k]();});try{await save(o);}catch(e){say(e.message,1);}}));
+  if(cancel)box.appendChild(btn('Cancel','alt',cancel));
+  return box;
+}
+
+/* ---------- login / tabs ---------- */
+var TABS=[['dash','Dashboard'],['enq','Enquiries'],['rev','Reviews'],['book','Bookings'],['cal','Calendar'],['price','Prices & header'],['team','Team'],['gal','Galleries'],['cli','Clients'],['exp','Expenses'],['rep','Reports'],['xp','Export']];
+function logout(){tok='';try{sessionStorage.removeItem('zt');}catch(e){}$('app').classList.add('hide');$('lock').classList.remove('hide');$('pw').value='';}
+function start(){
+  $('lock').classList.add('hide');$('app').classList.remove('hide');
+  var t=$('tabs');t.textContent='';
+  TABS.forEach(function(x){var b=btn(x[1],'tab',function(){say('');go(x[0]);});b.dataset.t=x[0];b.setAttribute('role','tab');t.appendChild(b);});
+  go('dash');
+}
+function go(t){
+  cur=t;document.querySelectorAll('.tab').forEach(function(b){b.setAttribute('aria-selected',b.dataset.t===t?'true':'false');});
+  var v=$('view');v.textContent='Loading...';
+  Promise.resolve(VIEWS[t](v)).catch(function(e){v.textContent='';say(e.message+' (If the server was idle it can take up to a minute to wake. Try again.)',1);});
+}
+$('go').onclick=async function(){
+  var m=$('lm');m.textContent='Signing in. The server may need up to a minute to wake up...';
+  try{var d=await api('/admin/login','POST',{email:$('em').value.trim(),password:$('pw').value});tok=d.token;try{sessionStorage.setItem('zt',tok);}catch(e){}m.textContent='';start();}
+  catch(e){m.textContent=e.message;}
+};
+$('pw').addEventListener('keydown',function(e){if(e.key==='Enter')$('go').click();});
+$('out').onclick=logout;
+
+/* ---------- dashboard ---------- */
+VIEWS.dash0=async function(v){
+  var r=await Promise.all([api('/admin/stats'),api('/admin/bookings')]),s=r[0];v.textContent='';
+  var g=el('div','stats');
+  [['New enquiries',s.newEnquiries],['Upcoming shoots',s.upcomingBookings],['Money owed',ksh(s.outstandingBalance)]].forEach(function(x){var b=el('div','stat');b.appendChild(el('b','',String(x[1])));b.appendChild(el('span','',x[0]));g.appendChild(b);});
+  v.appendChild(g);
+  var c=el('div','card');c.appendChild(el('h2','','Next shoots'));
+  var up=r[1].filter(function(b){return day(b.eventDate)>=today&&b.status!=='cancelled';}).slice(0,6);
+  if(!up.length)c.appendChild(el('p','empty','No upcoming shoots. Add one in Bookings.'));
+  up.forEach(function(b){var w=el('div','item'),d=el('div','info');d.appendChild(el('b','',nice(b.eventDate)+' - '+b.clientName));d.appendChild(el('small','',(b.service||'')+(b.location?' - '+b.location:'')+' - balance '+ksh(b.balance)));w.appendChild(d);c.appendChild(w);});
+  v.appendChild(c);
+};
+
+VIEWS.dash=async function(v){
+  await VIEWS.dash0(v);
+  try{
+  var r=await Promise.all([api('/admin/clients'),api('/admin/bookings'),api('/admin/reviews')]),t0=new Date(today+'T00:00:00'),bd=[];
+  r[0].forEach(function(c){
+    if(!c.birthday)return;var mm=+c.birthday.slice(0,2),dd=+c.birthday.slice(3),d=new Date(t0.getFullYear(),mm-1,dd);
+    if(d<t0)d=new Date(t0.getFullYear()+1,mm-1,dd);var n=Math.round((d-t0)/864e5);if(n<=14)bd.push({c:c,n:n});
+  });
+  bd.sort(function(a,b){return a.n-b.n;});
+  var bc=el('div','card');bc.appendChild(el('h2','','Birthdays in the next 14 days'));
+  if(!bd.length)bc.appendChild(el('p','empty','No birthdays coming up. Add birthdays in the Clients tab.'));
+  bd.slice(0,8).forEach(function(x){
+    var w=el('div','item'),i=el('div','info'),b=el('div','btns');
+    i.appendChild(el('b','',x.c.name));i.appendChild(el('small','',bday(x.c.birthday)+(x.n===0?' - TODAY':' - in '+x.n+' day'+(x.n>1?'s':''))));
+    if(x.c.email&&x.c.marketingOk)b.appendChild(btn('Send birthday email','go',function(){sendBday(x.c);}));
+    else i.appendChild(el('small','warn',x.c.email?'Has not agreed to emails yet':'No email saved'));
+    w.appendChild(i);w.appendChild(b);bc.appendChild(w);
+  });
+  v.appendChild(bc);
+  var aw=r[1].filter(function(b){return b.eventDate&&day(b.eventDate)<today&&b.status!=='cancelled'&&b.delivery!=='delivered';}),dc=el('div','card');
+  dc.appendChild(el('h2','','Waiting for delivery ('+aw.length+')'));
+  if(!aw.length)dc.appendChild(el('p','empty','Every finished shoot has been delivered.'));
+  aw.slice(0,8).forEach(function(b){
+    var w=el('div','item'),i=el('div','info'),bt=el('div','btns');
+    i.appendChild(el('b','',b.clientName));i.appendChild(el('small','',nice(b.eventDate)+' - now: '+(b.delivery||'not started')));
+    bt.appendChild(btn('Mark delivered','go',async function(){var d=pay(b);d.delivery='delivered';try{await api('/admin/bookings/'+b._id,'PUT',d);go('dash');}catch(x){say(x.message,1);}}));
+    w.appendChild(i);w.appendChild(bt);dc.appendChild(w);
+  });
+  v.appendChild(dc);
+  var pend=r[2].filter(function(x){return x.status==='pending';});
+  if(pend.length){var rc=el('div','card');rc.appendChild(el('h2','','Reviews waiting for approval ('+pend.length+')'));
+    pend.slice(0,3).forEach(function(x){rc.appendChild(el('p','empty',x.name+' ('+x.rating+'/5): '+x.text.slice(0,110)+(x.text.length>110?'...':'')));});
+    rc.appendChild(btn('Review them','go',function(){go('rev');}));v.insertBefore(rc,v.children[1]);}
+  }catch(e){say('Some dashboard sections could not load: '+e.message,1);}
+};
+
+/* ---------- reviews ---------- */
+VIEWS.rev=async function(v){
+  var all=await api('/admin/reviews'),ord={pending:0,approved:1,hidden:2};
+  all.sort(function(a,b){return ord[a.status]-ord[b.status];});
+  var pend=all.filter(function(x){return x.status==='pending';}).length;v.textContent='';
+  var c=el('div','card');c.appendChild(el('h2','','Reviews ('+pend+' waiting for approval)'));
+  c.appendChild(el('p','empty','Only approved reviews appear on your website. As soon as one is approved, the sample testimonials are replaced by real ones.'));
+  if(!all.length)c.appendChild(el('p','empty','No reviews yet. Clients can send one from the "What our clients say" section of your website.'));
+  all.forEach(function(r){
+    var w=el('div','item'),i=el('div','info'),b=el('div','btns');
+    i.appendChild(el('b','',r.name+'  '+'\u2605'.repeat(r.rating)+'\u2606'.repeat(5-r.rating)));
+    i.appendChild(el('span',r.status==='pending'?'role warn':'role',(r.service||'No service given')+' - '+new Date(r.createdAt).toLocaleDateString('en-GB')+' - '+r.status.toUpperCase()));
+    i.appendChild(el('small','',r.text));
+    function set(st){return async function(){try{await api('/admin/reviews/'+r._id,'PATCH',{status:st});say(st==='approved'?'Approved. It shows on your website within a minute.':'Updated.');go('rev');}catch(e){say(e.message,1);}};}
+    if(r.status!=='approved')b.appendChild(btn('Approve','go',set('approved')));
+    if(r.status!=='hidden')b.appendChild(btn('Hide','',set('hidden')));
+    b.appendChild(btn('Delete','del',async function(){if(!confirm('Delete this review for good?'))return;try{await api('/admin/reviews/'+r._id,'DELETE');go('rev');}catch(e){say(e.message,1);}}));
+    w.appendChild(i);w.appendChild(b);c.appendChild(w);
+  });
+  v.appendChild(c);
+};
+
+/* ---------- enquiries ---------- */
+VIEWS.enq=async function(v){
+  v.textContent='';var bar=el('div','card'),st=el('select'),q=el('input'),list=el('div','card');
+  ['all'].concat(ENQ).forEach(function(s){var o=el('option','',s);o.value=s;st.appendChild(o);});
+  q.placeholder='Search name, phone or message';q.style.marginTop='.6rem';
+  bar.appendChild(st);bar.appendChild(q);bar.appendChild(btn('Search','',load));v.appendChild(bar);v.appendChild(list);
+  async function load(){
+    var d=await api('/admin/enquiries?limit=100'+(st.value!=='all'?'&status='+st.value:'')+(q.value.trim()?'&q='+encodeURIComponent(q.value.trim()):''));
+    list.textContent='';list.appendChild(el('h2','',d.total+' enquiries'));
+    if(!d.items.length)list.appendChild(el('p','empty','Nothing here yet.'));
+    d.items.forEach(function(e){
+      var w=el('div','item'),i=el('div','info'),b=el('div','btns'),sel=el('select','mini');
+      i.appendChild(el('b','',e.firstName+' '+e.lastName));
+      i.appendChild(el('span','role',(e.service||'General')+' - '+new Date(e.createdAt).toLocaleDateString('en-GB')));
+      i.appendChild(el('small','',[e.phone,e.email].filter(Boolean).join(' - ')));i.appendChild(el('small','',e.message));
+      ENQ.forEach(function(s){var o=el('option','',s);o.value=s;sel.appendChild(o);});sel.value=e.status;
+      sel.onchange=function(){api('/admin/enquiries/'+e._id,'PATCH',{status:sel.value}).then(function(){say('Status updated.');}).catch(function(x){say(x.message,1);});};
+      b.appendChild(sel);
+      if(intl(e.phone))b.appendChild(lnk('WhatsApp','wa','https://wa.me/'+intl(e.phone),1));
+      b.appendChild(lnk('Email','','mailto:'+e.email));
+      if(e.status!=='booked')b.appendChild(btn('Make booking','go',async function(){
+        var d1=prompt('Event date (YYYY-MM-DD), or leave empty'),p=d1===null?null:prompt('Agreed price in Ksh (optional)');if(p===null)return;
+        try{await api('/admin/enquiries/'+e._id+'/convert','POST',{eventDate:d1||undefined,price:p});say('Booking created.');go('book');}catch(x){say(x.message,1);}
+      }));
+      b.appendChild(btn('Delete','del',async function(){if(!confirm('Delete this enquiry?'))return;try{await api('/admin/enquiries/'+e._id,'DELETE');load();}catch(x){say(x.message,1);}}));
+      w.appendChild(i);w.appendChild(b);list.appendChild(w);
+    });
+  }
+  await load();
+};
+
+/* ---------- bookings (with payments and clash warnings) ---------- */
+function pay(b){return{clientName:b.clientName,clientPhone:b.clientPhone,clientEmail:b.clientEmail,service:b.service,location:b.location,eventDate:day(b.eventDate),price:b.price,deposit:b.deposit||0,status:b.status,team:(b.team||[]).map(tid),delivery:b.delivery,checklist:b.checklist,notes:b.notes};}
+function clash(b,all,self){
+  if(!b.eventDate||b.status==='cancelled')return '';
+  var d=day(b.eventDate),mine=(b.team||[]).map(tid),same=all.filter(function(o){return o._id!==self&&o.status!=='cancelled'&&day(o.eventDate)===d;});
+  if(!same.length)return '';
+  var hit=[],who=same.map(function(o){return o.clientName;}).join(', ');
+  same.forEach(function(o){(o.team||[]).forEach(function(m){if(mine.indexOf(tid(m))>-1&&hit.indexOf(m.name)<0)hit.push(m.name||'A team member');});});
+  return hit.length?hit.join(', ')+' already booked that day ('+who+')':'Another shoot is booked that day ('+who+')';
+}
+var BF=[{k:'clientName',l:'Client name'},{k:'clientPhone',l:'Phone',t:'tel'},{k:'clientEmail',l:'Email',t:'email'},{k:'service',l:'Service',p:'e.g. Wedding Signature Package'},{k:'eventDate',l:'Event date',t:'date'},{k:'location',l:'Location'},{k:'price',l:'Agreed price (Ksh)',t:'number'},{k:'status',l:'Status',t:'select',o:BS},{k:'team',l:'Team on this shoot',t:'team'},{k:'delivery',l:'Delivery progress',t:'select',o:DL},{k:'checklist',l:'Shoot checklist (shot list, gear, call time, venue contact)',t:'area',rows:5},{k:'notes',l:'Notes',t:'area'}];
+async function loadTeam(){cache.team=await api('/admin/team');}
+
+VIEWS.book=async function(v){
+  var r=await Promise.all([api('/admin/bookings'),loadTeam()]),all=r[0],host=el('div'),list=el('div','card');
+  v.textContent='';v.appendChild(btn('+ New booking','',function(){open();}));v.appendChild(host);v.appendChild(list);
+  list.appendChild(el('h2','',all.length+' bookings'));
+  function open(b){
+    host.textContent='';host.appendChild(form(b?'Edit booking':'New booking',BF,b||{status:'pending'},async function(o){
+      var data=Object.assign(b?pay(b):{},o),w=clash(data,all,b&&b._id);
+      if(w&&!confirm('Warning: '+w+'.\n\nSave anyway?'))return;
+      await api(b?'/admin/bookings/'+b._id:'/admin/bookings',b?'PUT':'POST',data);say('Saved.');go('book');
+    },function(){host.textContent='';}));
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+  if(!all.length)list.appendChild(el('p','empty','No bookings yet. Add one, or turn an enquiry into a booking.'));
+  all.forEach(function(b){
+    var w=el('div','item'),i=el('div','info'),bt=el('div','btns'),sel=el('select','mini'),pp=el('div'),warn=clash(b,all,b._id);
+    i.appendChild(el('b','',b.clientName));
+    i.appendChild(el('span','role',nice(b.eventDate)+(b.service?' - '+b.service:'')));
+    if(b.location)i.appendChild(el('small','','Location: '+b.location));
+    i.appendChild(el('small','','Price '+ksh(b.price)+' - Paid '+ksh(b.paid)+' - Balance '+ksh(b.balance)));
+    i.appendChild(el('small','','Delivery: '+(b.delivery||'not started')));
+    if(b.checklist)i.appendChild(el('small','','Checklist: '+b.checklist.slice(0,140)+(b.checklist.length>140?'...':'')));
+    if((b.team||[]).length)i.appendChild(el('small','','Team: '+b.team.map(function(m){return m.name;}).join(', ')));
+    if(warn)i.appendChild(el('small','warn','Warning: '+warn));
+    BS.forEach(function(s){var o=el('option','',s);o.value=s;sel.appendChild(o);});sel.value=b.status;
+    sel.onchange=function(){var d=pay(b);d.status=sel.value;api('/admin/bookings/'+b._id,'PUT',d).then(function(){say('Status updated.');go('book');}).catch(function(x){say(x.message,1);});};
+    bt.appendChild(sel);
+    bt.appendChild(btn('Payments','go',function(){if(pp.firstChild){pp.textContent='';return;}payPanel(b,pp);}));
+    bt.appendChild(btn('Edit','',function(){open(b);}));
+    bt.appendChild(btn('Delete','del',async function(){if(!confirm('Delete booking for '+b.clientName+'?'))return;try{await api('/admin/bookings/'+b._id,'DELETE');go('book');}catch(x){say(x.message,1);}}));
+    w.appendChild(i);w.appendChild(bt);w.appendChild(pp);list.appendChild(w);
+  });
+};
+function payPanel(b,host){
+  var h=el('div','paybox');
+  if(b.deposit)h.appendChild(el('small','','Deposit recorded earlier: '+ksh(b.deposit)));
+  (b.payments||[]).forEach(function(p){
+    var r=el('div','prow');r.appendChild(el('span','',nice(p.date)+' - '+ksh(p.amount)+' - '+p.method+(p.ref?' - '+p.ref:'')));
+    r.appendChild(btn('Remove','del mini',async function(){if(!confirm('Remove this payment?'))return;try{await api('/admin/bookings/'+b._id+'/payments/'+p._id,'DELETE');go('book');}catch(x){say(x.message,1);}}));h.appendChild(r);
+  });
+  if(!b.deposit&&!(b.payments||[]).length)h.appendChild(el('p','empty','No payments recorded yet.'));
+  h.appendChild(form('Record a payment',[{k:'amount',l:'Amount (Ksh)',t:'number'},{k:'method',l:'Method',t:'select',o:['M-Pesa','Cash','Bank transfer']},{k:'ref',l:'M-Pesa code or reference'},{k:'date',l:'Date',t:'date'}],{date:today},async function(o){
+    await api('/admin/bookings/'+b._id+'/payments','POST',o);say('Payment recorded.');go('book');
+  },null,'Add payment'));
+  host.appendChild(h);
+}
+
+/* ---------- calendar ---------- */
+var cm=new Date();
+VIEWS.cal=async function(v){
+  var all=await api('/admin/bookings');
+  function draw(){
+    v.textContent='';var y=cm.getFullYear(),m=cm.getMonth(),c=el('div','card'),hd=el('div','calhd');
+    hd.appendChild(btn('< Prev','alt',function(){cm=new Date(y,m-1,1);draw();}));
+    hd.appendChild(el('h2','',cm.toLocaleDateString('en-GB',{month:'long',year:'numeric'})));
+    hd.appendChild(btn('Next >','alt',function(){cm=new Date(y,m+1,1);draw();}));c.appendChild(hd);
+    var g=el('div','cal');['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(function(n){g.appendChild(el('div','dow',n));});
+    var first=(new Date(y,m,1).getDay()+6)%7,days=new Date(y,m+1,0).getDate();
+    for(var i=0;i<first;i++)g.appendChild(el('div','cell off'));
+    for(var d=1;d<=days;d++){
+      var ds=y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+      var items=all.filter(function(b){return day(b.eventDate)===ds&&b.status!=='cancelled';});
+      var cell=el('div','cell'+(items.length>1?' clash':''));cell.appendChild(el('span','dn',String(d)));
+      items.forEach(function(b){var t=el('div','chip',b.clientName);t.title=(b.service||'')+' '+(b.location||'');cell.appendChild(t);});
+      g.appendChild(cell);
+    }
+    c.appendChild(g);c.appendChild(el('p','empty','Red days have more than one shoot booked.'));v.appendChild(c);
+  }
+  draw();
+};
+
+/* ---------- website prices ---------- */
+var PR=[['wedding-photography','Wedding Photography (from)',40000],['wedding-films','Wedding Films (from)',50000],['landscape','Landscape & Nature (from)',13000],['portrait','Portrait Sessions (from)',8000],['brand','Brand & Commercial (from)',35000],['travel','Travel & Documentary (from)',45000],['drone','Drone Aerial (from)',22000],['workshops','Workshops (from)',4000],['classic','Wedding package: Classic',40000],['signature','Wedding package: Signature',75000],['royal','Wedding package: Royal',105000]];
+VIEWS.price=async function(v){
+  var cur2=await api('/admin/prices'),vals={};v.textContent='';
+  PR.forEach(function(p){vals[p[0]]=cur2[p[0]]!=null?cur2[p[0]]:p[2];});
+  v.appendChild(form('Prices shown on your website (Ksh)',PR.map(function(p){return{k:p[0],l:p[1],t:'number'};}),vals,async function(o){
+    await api('/admin/prices','PUT',o);say('Saved. Your website shows the new prices within a minute.');
+  },null,'Save prices'));
+};
+
+/* ---------- messages in the strip above the menu (under the prices form) ---------- */
+var AVAIL='Now booking 2026/27 weddings & events';
+var IDEAS=[AVAIL,'Free consultation for every wedding enquiry','Weekend dates fill up fast. Book early','Open Monday to Saturday, 8am to 6pm','Drone and film packages now available'];
+function msgEditor(v,h){
+  var rows=(h.messages||[]).map(function(m){return {text:m.text,on:m.on!==false};});
+  if(!rows.length&&!h.saved)rows=[{text:AVAIL,on:true}];
+  var card=el('div','card'),list=el('div'),ideas=el('div');
+  card.appendChild(el('h2','','Messages in the strip above your menu'));
+  card.appendChild(el('p','empty','Add as many as you like. When more than one is switched on, they take turns every 5 seconds. Switch them all off to hide the line.'));
+  card.appendChild(list);
+  function draw(){
+    list.textContent='';
+    if(!rows.length)list.appendChild(el('p','empty','No messages yet. Add one below.'));
+    rows.forEach(function(r,i){
+      var w=el('div','item'),info=el('div','info'),inp=el('input'),b=el('div','btns'),lab=el('label','chk'),chk=el('input');
+      inp.value=r.text;inp.maxLength=80;inp.placeholder='Type a short message';inp.setAttribute('aria-label','Message '+(i+1));inp.oninput=function(){r.text=inp.value;};
+      info.appendChild(inp);
+      chk.type='checkbox';chk.checked=r.on;chk.onchange=function(){r.on=chk.checked;};lab.style.margin='0';lab.appendChild(chk);lab.appendChild(document.createTextNode(' Show'));b.appendChild(lab);
+      if(i>0)b.appendChild(btn('Move up','',function(){var t=rows[i-1];rows[i-1]=rows[i];rows[i]=t;draw();}));
+      b.appendChild(btn('Remove','del',function(){rows.splice(i,1);draw();}));
+      w.appendChild(info);w.appendChild(b);list.appendChild(w);
+    });
+    ideas.textContent='';
+  }
+  draw();
+  card.appendChild(btn('+ Add message','alt',function(){if(rows.length>=12){say('You can have up to 12 messages.',1);return;}rows.push({text:'',on:true});draw();var q=list.querySelectorAll('input[type=text],input:not([type])');if(q.length)q[q.length-1].focus();}));
+  card.appendChild(btn('Save messages','',async function(){
+    var out=rows.filter(function(r){return r.text.trim();}).map(function(r){return {text:r.text.trim(),on:r.on};});
+    try{await api('/admin/header','PUT',{messages:out});say(out.some(function(m){return m.on;})?'Saved. Your website shows the new messages within a minute.':'Saved. The line is now hidden on your website.');go('price');}catch(e){say(e.message,1);}
+  }));
+  card.appendChild(el('p','empty','Ideas (tap to add, then edit the wording so it is true for you):'));
+  IDEAS.forEach(function(t){card.appendChild(btn(t,'alt mini',function(){if(rows.length>=12)return;rows.push({text:t,on:true});draw();}));});
+  v.appendChild(card);
+}
+VIEWS.price0=VIEWS.price;
+VIEWS.price=async function(v){
+  await VIEWS.price0(v);
+  msgEditor(v,await api('/admin/header'));
+};
+
+/* ---------- team and galleries ---------- */
+function crudTab(path,title,fields,lines,extra,top){
+  return async function(v){
+    var items=await api(path),host=el('div'),list=el('div','card');if(path==='/admin/team')cache.team=items;
+    v.textContent='';v.appendChild(btn('+ Add','',function(){open();}));(top||[]).forEach(function(t){v.appendChild(btn(t[0],'alt',t[1]));});v.appendChild(host);v.appendChild(list);
+    list.appendChild(el('h2','',title+' ('+items.length+')'));
+    function open(it){host.textContent='';host.appendChild(form(it?'Edit':'Add',fields,it||{},async function(o){await api(it?path+'/'+it._id:path,it?'PUT':'POST',o);say('Saved.');go(cur);},function(){host.textContent='';}));window.scrollTo({top:0,behavior:'smooth'});}
+    if(!items.length)list.appendChild(el('p','empty','Nothing here yet.'));
+    items.forEach(function(it){
+      var w=el('div','item'),i=el('div','info'),b=el('div','btns');
+      i.appendChild(el('b','',it.name));lines(it).forEach(function(l){if(l)i.appendChild(el('small',l.cls||'',l.t||l));});
+      extra(it).forEach(function(x){b.appendChild(x);});
+      b.appendChild(btn('Edit','',function(){open(it);}));
+      b.appendChild(btn('Remove','del',async function(){if(!confirm('Remove '+it.name+'?'))return;try{await api(path+'/'+it._id,'DELETE');go(cur);}catch(x){say(x.message,1);}}));
+      w.appendChild(i);w.appendChild(b);list.appendChild(w);
+    });
+  };
+}
+VIEWS.team=crudTab('/admin/team','Team contacts',
+  [{k:'name',l:'Full name'},{k:'role',l:'Role'},{k:'phone',l:'Phone',t:'tel'},{k:'whatsapp',l:'WhatsApp (if different)',t:'tel'},{k:'email',l:'Email',t:'email'},{k:'note',l:'Notes'},{k:'isPublic',l:'Show name and role on my website',t:'check'}],
+  function(m){return [m.role,m.phone&&'Phone: '+m.phone,m.email,m.note,m.isPublic&&'Shown on website'];},
+  function(m){var a=[],n=intl(m.whatsapp||m.phone);
+    if(m.phone)a.push(lnk('Call','go','tel:+'+intl(m.phone)));
+    if(n)a.push(lnk('WhatsApp','wa','https://wa.me/'+n,1));
+    if(m.email)a.push(lnk('Email','','mailto:'+m.email));return a;});
+VIEWS.gal=crudTab('/admin/galleries','Client galleries',
+  [{k:'name',l:'Client / event name'},{k:'link',l:'Gallery link',p:'https://...'},{k:'note',l:'Short note'},{k:'order',l:'Order (1 shows first)',t:'number'}],
+  function(g){return [g.link,g.note];},
+  function(g){return [lnk('Open','',g.link,1)];});
+
+/* ---------- clients and birthdays ---------- */
+function bday(m){return m?new Date(2000,+m.slice(0,2)-1,+m.slice(3)).toLocaleDateString('en-GB',{day:'numeric',month:'long'}):'';}
+async function sendBday(c){
+  if(!confirm('Send a birthday email to '+c.name+' ('+c.email+')?'))return;
+  try{await api('/admin/clients/'+c._id+'/birthday-email','POST');say('Birthday email sent to '+c.name+'.');}catch(e){say(e.message,1);}
+}
+async function bmForm(){
+  var t=await api('/admin/birthday-message'),v=$('view');v.textContent='';
+  v.appendChild(form('Birthday email message',[{k:'subject',l:'Subject'},{k:'body',l:'Message (type {name} where the first name should go)',t:'area',rows:8}],t,async function(o){await api('/admin/birthday-message','PUT',o);say('Saved.');go('cli');},function(){go('cli');}));
+}
+VIEWS.cli=crudTab('/admin/clients','Clients',
+  [{k:'name',l:'Full name'},{k:'email',l:'Email',t:'email'},{k:'phone',l:'Phone',t:'tel'},{k:'birthday',l:'Birthday (year does not matter)',t:'date',md:1},{k:'marketingOk',l:'Client agreed to receive emails from ZOOM',t:'check'},{k:'note',l:'Notes'}],
+  function(c){return [c.email||'No email saved',c.phone,c.birthday?'Birthday: '+bday(c.birthday):'No birthday saved',c.marketingOk?'Agreed to emails':{t:'Has not agreed to emails yet',cls:'warn'}];},
+  function(c){var a=[];
+    if(c.email&&c.marketingOk)a.push(btn('Birthday email','go',function(){sendBday(c);}));
+    if(intl(c.phone))a.push(lnk('WhatsApp','wa','https://wa.me/'+intl(c.phone),1));
+    if(c.email)a.push(lnk('Email','','mailto:'+c.email));return a;},
+  [['Import from enquiries and bookings',async function(){try{var r=await api('/admin/clients/import','POST');say('Added '+r.added+' new client'+(r.added===1?'':'s')+' with an email address.');go('cli');}catch(e){say(e.message,1);}}],['Edit birthday message',function(){bmForm().catch(function(e){say(e.message,1);});}]]);
+
+/* ---------- expenses and gear ---------- */
+VIEWS.exp=crudTab('/admin/expenses','Expenses and gear',
+  [{k:'name',l:'What was it for'},{k:'category',l:'Category',t:'select',o:EXC},{k:'amount',l:'Amount (Ksh)',t:'number'},{k:'date',l:'Date',t:'date'}],
+  function(x){return [x.category+' - '+ksh(x.amount),nice(x.date)];},
+  function(){return [];});
+
+/* ---------- monthly report ---------- */
+var ry=new Date().getFullYear();
+VIEWS.rep=async function(v){
+  var d=await api('/admin/report?year='+ry),M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];v.textContent='';
+  var c=el('div','card'),hd=el('div','calhd');
+  hd.appendChild(btn('< '+(ry-1),'alt',function(){ry--;go('rep');}));hd.appendChild(el('h2','','Income report '+d.year));hd.appendChild(btn((ry+1)+' >','alt',function(){ry++;go('rep');}));c.appendChild(hd);
+  var T=[0,0];
+  d.months.forEach(function(m){T[0]+=m.income;T[1]+=m.expenses;var r=el('div','prow');r.appendChild(el('span','',M[m.month-1]+'  in '+ksh(m.income)+'  out '+ksh(m.expenses)));var p=el('b','',ksh(m.profit));if(m.profit<0)p.className='warn';r.appendChild(p);c.appendChild(r);});
+  var tr=el('div','prow');tr.appendChild(el('b','','Year total  in '+ksh(T[0])+'  out '+ksh(T[1])));tr.appendChild(el('b','',ksh(T[0]-T[1])));c.appendChild(tr);
+  c.appendChild(el('p','empty','Income counts payments by the date you recorded them. Right-hand figure is profit.'));v.appendChild(c);
+  var s=el('div','card');s.appendChild(el('h2','','Best-selling services '+d.year));
+  if(!d.topServices.length)s.appendChild(el('p','empty','No bookings with event dates in this year.'));
+  d.topServices.forEach(function(x){var r=el('div','prow');r.appendChild(el('span','',x.service+' ('+x.count+')'));r.appendChild(el('b','',ksh(x.revenue)));s.appendChild(r);});v.appendChild(s);
+  var o=el('div','card');o.appendChild(el('h2','','Who still owes you'));
+  if(!d.owed.length)o.appendChild(el('p','empty','Nobody owes you anything.'));
+  d.owed.forEach(function(x){var r=el('div','prow');r.appendChild(el('span','',x.client+' - '+nice(x.eventDate)));r.appendChild(el('b','warn',ksh(x.balance)));o.appendChild(r);});v.appendChild(o);
+};
+
+/* ---------- CSV export ---------- */
+function csv(name,head,rows){
+  var q=function(c){c=c==null?'':String(c);if(/^[=+\-@]/.test(c))c="'"+c;return '"'+c.replace(/"/g,'""')+'"';};
+  var t=[head].concat(rows).map(function(r){return r.map(q).join(',');}).join('\r\n'),a=el('a');
+  a.href=URL.createObjectURL(new Blob(['\ufeff'+t],{type:'text/csv'}));a.download=name+'-'+today+'.csv';document.body.appendChild(a);a.click();a.remove();
+}
+VIEWS.xp=async function(v){
+  v.textContent='';var c=el('div','card');c.appendChild(el('h2','','Download your data as CSV (opens in Excel)'));
+  c.appendChild(el('p','empty','Use these as backups and for your accountant. Download them regularly.'));
+  function add(label,fn){c.appendChild(btn(label,'',async function(){say('Preparing...');try{await fn();say('Downloaded.');}catch(e){say(e.message,1);}}));c.appendChild(document.createTextNode(' '));}
+  add('Clients',async function(){var a=await api('/admin/clients');csv('clients',['Name','Email','Phone','Birthday','Agreed to emails','Notes'],a.map(function(x){return [x.name,x.email,x.phone,x.birthday,x.marketingOk?'yes':'no',x.note];}));});
+  add('Bookings',async function(){var a=await api('/admin/bookings');csv('bookings',['Client','Phone','Email','Service','Event date','Location','Price','Paid','Balance','Status','Delivery'],a.map(function(b){return [b.clientName,b.clientPhone,b.clientEmail,b.service,day(b.eventDate),b.location,b.price,b.paid,b.balance,b.status,b.delivery];}));});
+  add('Payments',async function(){var a=await api('/admin/bookings'),r=[];a.forEach(function(b){(b.payments||[]).forEach(function(p){r.push([b.clientName,day(p.date),p.amount,p.method,p.ref]);});});csv('payments',['Client','Date','Amount','Method','Reference'],r);});
+  add('Expenses',async function(){var a=await api('/admin/expenses');csv('expenses',['Date','What','Category','Amount'],a.map(function(x){return [day(x.date),x.name,x.category,x.amount];}));});
+  add('Enquiries',async function(){var r=[],pg=1,d;do{d=await api('/admin/enquiries?limit=100&page='+pg);d.items.forEach(function(e){r.push([day(e.createdAt),e.firstName+' '+e.lastName,e.email,e.phone,e.service,e.status,e.message]);});pg++;}while(pg<=d.pages&&pg<=20);csv('enquiries',['Date','Name','Email','Phone','Service','Status','Message'],r);});
+  v.appendChild(c);
+};
+
+if(tok)start();
+})();
+</script>
+</body>
+</html>
