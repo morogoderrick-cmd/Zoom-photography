@@ -19,6 +19,10 @@ services:
         sync: false
       - key: ALLOWED_ORIGINS
         sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT

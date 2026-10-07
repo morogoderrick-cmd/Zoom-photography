@@ -116,13 +116,43 @@ const Expense = mongoose.model('Expense', new mongoose.Schema({
 }, T));
 
 /* ------------------------------- email ------------------------------- */
-const mailer = env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS
+// Render's free plan blocks the SMTP ports (25, 465, 587), so Gmail/SMTP cannot connect from there.
+// Recommended: Brevo's web API (HTTPS, free plan). Set BREVO_API_KEY and MAIL_FROM (an address verified in Brevo).
+// SMTP still works on a paid Render plan or on your own computer.
+const parseFrom = f => {
+  const m = String(f || '').match(/^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/);
+  return m ? { name: m[1].trim() || undefined, email: m[2].trim() } : { email: String(f || '').trim() };
+};
+const BREVO_FROM = env.MAIL_FROM || env.NOTIFY_EMAIL || '';
+const brevoMailer = env.BREVO_API_KEY && BREVO_FROM ? {
+  async sendMail(o) {
+    const sender = parseFrom(o.from || BREVO_FROM);
+    if (!sender.name) sender.name = 'ZOOM Photography & Videography';
+    const body = { sender, to: [{ email: String(o.to).trim() }], subject: o.subject };
+    if (o.text) body.textContent = o.text;
+    if (o.html) body.htmlContent = o.html;
+    if (o.replyTo) body.replyTo = { email: o.replyTo };
+    const r = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: { 'api-key': env.BREVO_API_KEY, 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) {
+      let m = '';
+      try { m = (await r.json()).message || ''; } catch (e) { /* ignore */ }
+      throw new Error(`Email service refused the message (${r.status}${m ? ': ' + m : ''}).`);
+    }
+    return r.json().catch(() => ({}));
+  }
+} : null;
+const smtpMailer = env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS
   ? nodemailer.createTransport({
     host: env.SMTP_HOST, port: Number(env.SMTP_PORT || 465),
     secure: Number(env.SMTP_PORT || 465) === 465,
     auth: { user: env.SMTP_USER, pass: env.SMTP_PASS }
   })
   : null;
+const mailer = brevoMailer || smtpMailer;
 
 async function notifyOwner(e) {
   if (!mailer || !env.NOTIFY_EMAIL) return;
@@ -141,6 +171,7 @@ async function notifyOwner(e) {
 
 /* -------------------------------- app -------------------------------- */
 const app = express();
+app.locals.mailer = mailer;
 app.set('trust proxy', 1); // Render sits behind a proxy
 app.use(helmet());
 app.use(cors({
@@ -216,7 +247,7 @@ app.post('/api/reviews', limiter(60 * 60 * 1000, 3, 'You have sent several revie
 }));
 
 // Messages shown in the strip above the menu. Stored as [{text, on}]; older single "availability" text is still understood.
-const cleanMessages = arr => (Array.isArray(arr) ? arr : []).slice(0, 12)
+const cleanMessages = arr => (Array.isArray(arr) ? arr : []).slice(0, 20)
   .map(m => ({ text: line(m && m.text, 80), on: !(m && m.on === false) })).filter(m => m.text);
 const adminMessages = v => (v && Array.isArray(v.messages) ? v.messages
   : v && typeof v.availability === 'string' && v.availability.trim() ? [{ text: v.availability.trim(), on: true }] : []);
@@ -255,7 +286,7 @@ async function bdayTemplate() {
   return s ? s.value : BDAY_DEFAULT;
 }
 async function sendBirthday(c, tpl) {
-  if (!mailer) throw new Error('Email is not set up on the server (SMTP settings).');
+  if (!mailer) throw new Error('Email is not set up on the server. Add BREVO_API_KEY and MAIL_FROM in Render (see the README), then redeploy.');
   const body = fill(tpl.body, c);
   await mailer.sendMail({
     from: env.MAIL_FROM || env.SMTP_USER, to: c.email,
@@ -478,6 +509,16 @@ admin.delete('/bookings/:id/payments/:pid', wrap(async (req, res) => {
   res.json(b);
 }));
 
+admin.post('/test-email', wrap(async (req, res) => {
+  if (!mailer) return bad(res, 'Email is not set up on the server yet. Add BREVO_API_KEY and MAIL_FROM in Render, then redeploy.');
+  const to = env.NOTIFY_EMAIL || env.ADMIN_EMAIL;
+  if (!to) return bad(res, 'Set NOTIFY_EMAIL in Render so the server knows where to send it.');
+  try {
+    await mailer.sendMail({ from: env.MAIL_FROM || env.SMTP_USER, to, subject: 'ZOOM admin: test email', text: 'It works. Your website can now send you email.' });
+  } catch (e) { return bad(res, 'The email could not be sent: ' + e.message); }
+  res.json({ success: true, message: 'Test email sent to ' + to + '. Check your inbox and spam folder.' });
+}));
+
 admin.get('/header', wrap(async (req, res) => {
   const h = await Setting.findOne({ key: 'header' }).lean();
   res.json({ messages: adminMessages(h && h.value), saved: !!h });
@@ -613,7 +654,8 @@ async function seedAdmin() {
 async function start() {
   if (!env.MONGODB_URI) throw new Error('MONGODB_URI is required.');
   if (!ALLOWED.length) console.warn('Warning: ALLOWED_ORIGINS is empty, so browsers on your website will be blocked.');
-  if (!mailer) console.warn('Email notifications are off (SMTP settings not set).');
+  if (!mailer) console.warn('Email is off: set BREVO_API_KEY and MAIL_FROM (or SMTP settings).');
+  else console.log('Email is on via ' + (brevoMailer ? 'Brevo' : 'SMTP') + '.');
   await mongoose.connect(env.MONGODB_URI);
   await seedAdmin();
   app.listen(PORT, () => console.log(`ZOOM backend listening on port ${PORT}`));

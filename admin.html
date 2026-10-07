@@ -345,43 +345,74 @@ VIEWS.price=async function(v){
 };
 
 /* ---------- messages in the strip above the menu (under the prices form) ---------- */
-var AVAIL='Now booking 2026/27 weddings & events';
-var IDEAS=[AVAIL,'Free consultation for every wedding enquiry','Weekend dates fill up fast. Book early','Open Monday to Saturday, 8am to 6pm','Drone and film packages now available'];
+var MAXMSG=20,DRAFTKEY='zoomHeaderDraft';
+var IDEAS=["Now booking 2026/27 weddings & events", "Pre-wedding & wedding photography and films", "Engagement shoots & engagement parties", "Birthday shoots for kids and adults", "Baby showers & naming ceremonies, beautifully captured", "Graduation shoots: cap, gown and the moment you worked for", "Church services, dedications & baptisms covered", "Corporate, community & party events, start to finish", "Cinematic films with drone footage", "Portrait sessions, studio or outdoor", "Brand & commercial photography for your business", "Edited photos delivered fast", "Popular dates fill up. Book early", "WhatsApp us on 0787 593 983 for a quick quote", "Based in Eldoret \u00b7 We travel across Kenya", "Worked with us? Share your experience below"];
+function loadDraft(){try{var d=JSON.parse(localStorage.getItem(DRAFTKEY)||'null');return d&&Array.isArray(d.rows)?d:null;}catch(e){return null;}}
+function saveDraft(rows){try{localStorage.setItem(DRAFTKEY,JSON.stringify({rows:rows,t:Date.now()}));}catch(e){}}
+function clearDraft(){try{localStorage.removeItem(DRAFTKEY);}catch(e){}}
+function sig(a){return JSON.stringify(a.map(function(r){return [String(r.text||'').trim(),r.on!==false];}));}
 function msgEditor(v,h){
-  var rows=(h.messages||[]).map(function(m){return {text:m.text,on:m.on!==false};});
-  if(!rows.length&&!h.saved)rows=[{text:AVAIL,on:true}];
-  var card=el('div','card'),list=el('div'),ideas=el('div');
+  var saved=(h.messages||[]).map(function(m){return {text:m.text,on:m.on!==false};});
+  var rows=saved.slice(),restored=false,dr=loadDraft();
+  if(dr&&sig(dr.rows)!==sig(saved)){rows=dr.rows.map(function(r){return {text:String(r.text||''),on:r.on!==false};});restored=true;}
+  var card=el('div','card'),notice=el('p','empty'),list=el('div');
   card.appendChild(el('h2','','Messages in the strip above your menu'));
-  card.appendChild(el('p','empty','Add as many as you like. When more than one is switched on, they take turns every 5 seconds. Switch them all off to hide the line.'));
-  card.appendChild(list);
+  card.appendChild(el('p','empty','Add up to '+MAXMSG+' messages. When more than one is switched on they take turns every 5 seconds. Press Save messages to publish them. What you type is kept on this device until you save, so a refresh will not lose it.'));
+  card.appendChild(notice);card.appendChild(list);
+  function note(){
+    notice.textContent=restored?'Your unsaved messages were restored. Press Save messages to publish them.':(!h.saved&&!rows.length?'Nothing saved yet, so your website is showing its built-in messages. Add your own below, or tap Add suggested messages.':'');
+    notice.style.display=notice.textContent?'':'none';
+  }
   function draw(){
     list.textContent='';
     if(!rows.length)list.appendChild(el('p','empty','No messages yet. Add one below.'));
     rows.forEach(function(r,i){
       var w=el('div','item'),info=el('div','info'),inp=el('input'),b=el('div','btns'),lab=el('label','chk'),chk=el('input');
-      inp.value=r.text;inp.maxLength=80;inp.placeholder='Type a short message';inp.setAttribute('aria-label','Message '+(i+1));inp.oninput=function(){r.text=inp.value;};
+      inp.value=r.text;inp.maxLength=80;inp.placeholder='Type a short message';inp.setAttribute('aria-label','Message '+(i+1));inp.oninput=function(){r.text=inp.value;saveDraft(rows);};
       info.appendChild(inp);
-      chk.type='checkbox';chk.checked=r.on;chk.onchange=function(){r.on=chk.checked;};lab.style.margin='0';lab.appendChild(chk);lab.appendChild(document.createTextNode(' Show'));b.appendChild(lab);
-      if(i>0)b.appendChild(btn('Move up','',function(){var t=rows[i-1];rows[i-1]=rows[i];rows[i]=t;draw();}));
-      b.appendChild(btn('Remove','del',function(){rows.splice(i,1);draw();}));
+      chk.type='checkbox';chk.checked=r.on;chk.onchange=function(){r.on=chk.checked;saveDraft(rows);};lab.style.margin='0';lab.appendChild(chk);lab.appendChild(document.createTextNode(' Show'));b.appendChild(lab);
+      if(i>0)b.appendChild(btn('Move up','',function(){var t=rows[i-1];rows[i-1]=rows[i];rows[i]=t;saveDraft(rows);draw();}));
+      b.appendChild(btn('Remove','del',function(){rows.splice(i,1);saveDraft(rows);draw();}));
       w.appendChild(info);w.appendChild(b);list.appendChild(w);
     });
-    ideas.textContent='';
+    count.textContent=rows.length+' of '+MAXMSG+' messages';
+    note();
   }
-  draw();
-  card.appendChild(btn('+ Add message','alt',function(){if(rows.length>=12){say('You can have up to 12 messages.',1);return;}rows.push({text:'',on:true});draw();var q=list.querySelectorAll('input[type=text],input:not([type])');if(q.length)q[q.length-1].focus();}));
+  var count=el('p','empty');
+  card.appendChild(count);
+  card.appendChild(btn('+ Add message','alt',function(){if(rows.length>=MAXMSG){say('You can have up to '+MAXMSG+' messages.',1);return;}rows.push({text:'',on:true});saveDraft(rows);restored=false;draw();var q=list.querySelectorAll('input[type=text],input:not([type])');if(q.length)q[q.length-1].focus();}));
+  card.appendChild(btn('Add suggested messages','alt',function(){
+    var have=rows.map(function(r){return r.text.trim().toLowerCase();}),added=0;
+    IDEAS.forEach(function(t){if(rows.length<MAXMSG&&have.indexOf(t.toLowerCase())<0){rows.push({text:t,on:true});added++;}});
+    saveDraft(rows);restored=false;draw();say(added?added+' suggested messages added. Edit any that are not true for you, then press Save messages.':'All suggested messages are already in your list.');
+  }));
   card.appendChild(btn('Save messages','',async function(){
     var out=rows.filter(function(r){return r.text.trim();}).map(function(r){return {text:r.text.trim(),on:r.on};});
-    try{await api('/admin/header','PUT',{messages:out});say(out.some(function(m){return m.on;})?'Saved. Your website shows the new messages within a minute.':'Saved. The line is now hidden on your website.');go('price');}catch(e){say(e.message,1);}
+    try{
+      await api('/admin/header','PUT',{messages:out});
+      var back=await api('/admin/header');
+      if((back.messages||[]).length!==Math.min(out.length,MAXMSG)){say('The server kept '+(back.messages||[]).length+' of '+out.length+' messages. Your typing is still here. Please press Save again.',1);return;}
+      clearDraft();
+      say(out.some(function(m){return m.on;})?'Saved '+out.length+' message'+(out.length===1?'':'s')+'. Your website shows them within a minute.':'Saved. With no message switched on, your website shows its tagline.');
+      go('price');
+    }catch(e){say(e.message,1);}
   }));
-  card.appendChild(el('p','empty','Ideas (tap to add, then edit the wording so it is true for you):'));
-  IDEAS.forEach(function(t){card.appendChild(btn(t,'alt mini',function(){if(rows.length>=12)return;rows.push({text:t,on:true});draw();}));});
+  if(restored)card.appendChild(btn('Discard my unsaved changes','alt',function(){clearDraft();go('price');}));
+  draw();
   v.appendChild(card);
+}
+function emailCard(v){
+  var c=el('div','card');
+  c.appendChild(el('h2','','Email check'));
+  c.appendChild(el('p','empty','Sends a test email to your notification address, so you know enquiry alerts and birthday emails will work.'));
+  c.appendChild(btn('Send test email','alt',async function(){try{var r=await api('/admin/test-email','POST',{});say(r.message);}catch(e){say(e.message,1);}}));
+  v.appendChild(c);
 }
 VIEWS.price0=VIEWS.price;
 VIEWS.price=async function(v){
   await VIEWS.price0(v);
   msgEditor(v,await api('/admin/header'));
+  emailCard(v);
 };
 
 /* ---------- team and galleries ---------- */
