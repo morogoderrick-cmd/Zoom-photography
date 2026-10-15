@@ -72,6 +72,8 @@ const Setting = mongoose.model('Setting', new mongoose.Schema({
   key: { type: String, unique: true }, value: mongoose.Schema.Types.Mixed
 }));
 const PRICE_KEYS = ['wedding-photography', 'wedding-films', 'landscape', 'portrait', 'brand', 'travel', 'drone', 'workshops', 'classic', 'signature', 'royal'];
+// Newer services: stored when the admin panel sends them, but an older admin page that does not send them still works.
+const OPTIONAL_PRICE_KEYS = ['engagement', 'engagement-party', 'birthday', 'baby-shower', 'graduation', 'church', 'event'];
 
 const DELIVERY = ['not started', 'shot', 'editing', 'gallery sent', 'album printed', 'delivered'];
 const BOOK_STATUS = ['pending', 'confirmed', 'completed', 'cancelled'];
@@ -375,6 +377,12 @@ admin.put('/prices', wrap(async (req, res) => {
     if (!Number.isFinite(v) || v < 0 || v > 10000000) return bad(res, 'Enter a valid price for ' + k + '.');
     out[k] = Math.round(v);
   }
+  for (const k of OPTIONAL_PRICE_KEYS) {
+    if (req.body[k] === undefined || req.body[k] === null || req.body[k] === '') continue;
+    const v = Number(req.body[k]);
+    if (!Number.isFinite(v) || v < 0 || v > 10000000) return bad(res, 'Enter a valid price for ' + k + '.');
+    out[k] = Math.round(v);
+  }
   await Setting.findOneAndUpdate({ key: 'prices' }, { value: out }, { upsert: true });
   res.json({ success: true, prices: out });
 }));
@@ -517,6 +525,26 @@ admin.post('/test-email', wrap(async (req, res) => {
     await mailer.sendMail({ from: env.MAIL_FROM || env.SMTP_USER, to, subject: 'ZOOM admin: test email', text: 'It works. Your website can now send you email.' });
   } catch (e) { return bad(res, 'The email could not be sent: ' + e.message); }
   res.json({ success: true, message: 'Test email sent to ' + to + '. Check your inbox and spam folder.' });
+}));
+
+// Send a reply to the person who made an enquiry (goes only to the address on that enquiry).
+admin.post('/enquiries/:id/reply', wrap(async (req, res) => {
+  if (!isId(req.params.id)) return bad(res, 'Invalid id');
+  if (!mailer) return bad(res, 'Email is not set up on the server yet. Add BREVO_API_KEY and MAIL_FROM in Render, then redeploy.');
+  const e = await Enquiry.findById(req.params.id);
+  if (!e) return bad(res, 'Not found', 404);
+  if (!e.email) return bad(res, 'This enquiry has no email address.');
+  const subject = line(req.body.subject, 150);
+  const message = str(req.body.message, 5000);
+  if (!subject || message.length < 5) return bad(res, 'Write a subject and a message first.');
+  const replyTo = env.NOTIFY_EMAIL || env.ADMIN_EMAIL || undefined;
+  try {
+    await mailer.sendMail({ from: env.MAIL_FROM || env.SMTP_USER, to: e.email, subject, text: message, replyTo });
+  } catch (err) { return bad(res, 'The email could not be sent: ' + err.message, 502); }
+  if (e.status === 'new') e.status = 'contacted';
+  e.notes = str((e.notes ? e.notes + '\n' : '') + 'Emailed ' + new Date().toISOString().slice(0, 10) + ': ' + subject, 2000);
+  await e.save();
+  res.json({ success: true, message: 'Email sent to ' + e.email + '.', status: e.status });
 }));
 
 admin.get('/header', wrap(async (req, res) => {
