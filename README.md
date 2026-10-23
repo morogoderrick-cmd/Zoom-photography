@@ -57,7 +57,8 @@ Admin routes need the header `Authorization: Bearer <token>`.
 | GET | `/api/reviews` | Approved reviews for the website (public) |
 | GET | `/api/header` | Header strip data: your switched-on messages and the review average (public) |
 | GET | `/api/prices` | Website prices (public, set from the admin panel) |
-| GET | `/api/team` | Team members marked public (name and role only) |
+| GET | `/api/team` | Team members marked public: name, role, group and a picture link (no phone or email) |
+| GET | `/api/team/:id/photo` | A public team member's picture as an image |
 | POST | `/api/admin/login` | `{email, password}` returns `{token}` |
 | GET | `/api/admin/me` | Check the token |
 | POST | `/api/admin/change-password` | `{currentPassword, newPassword}` (10+ characters) |
@@ -68,7 +69,7 @@ Admin routes need the header `Authorization: Bearer <token>`.
 | DELETE | `/api/admin/enquiries/:id` | Delete |
 | GET/POST | `/api/admin/galleries` | List / add `{name, link, note, order}` |
 | PUT/DELETE | `/api/admin/galleries/:id` | Edit / remove |
-| GET/POST | `/api/admin/team` | List / add `{name, role, phone, whatsapp, email, note, isPublic}` |
+| GET/POST | `/api/admin/team` | List / add `{name, role, group, photo, order, phone, whatsapp, email, note, isPublic}`. `group` is `photography` or `videography`; `photo` is a small square image sent as a data URI (send `""` to remove it) |
 | PUT/DELETE | `/api/admin/team/:id` | Edit / remove |
 | GET/POST | `/api/admin/bookings` | List / add `{clientName, clientPhone, clientEmail, service, eventDate, location, price, deposit, status, team[], notes}` |
 | PUT/DELETE | `/api/admin/bookings/:id` | Edit / remove (`paid` and `balance` are calculated) |
