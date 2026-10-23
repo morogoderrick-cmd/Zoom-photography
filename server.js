@@ -65,7 +65,10 @@ const Gallery = mongoose.model('Gallery', new mongoose.Schema({
 const TeamMember = mongoose.model('TeamMember', new mongoose.Schema({
   name: { type: String, required: true }, role: String, phone: String,
   whatsapp: String, email: String, note: String,
-  isPublic: { type: Boolean, default: false }
+  isPublic: { type: Boolean, default: false },
+  group: { type: String, enum: ['photography', 'videography'], default: 'photography' },
+  photo: { type: String, default: '' },   // small square picture stored as a data URI (about 20-60 KB)
+  order: { type: Number, default: 0 }
 }, T));
 
 const Setting = mongoose.model('Setting', new mongoose.Schema({
@@ -184,6 +187,7 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+app.use('/api/admin/team', express.json({ limit: '400kb' }));
 app.use(express.json({ limit: '20kb' }));
 
 const limiter = (windowMs, max, message, skipFailed) => rateLimit({
@@ -217,8 +221,21 @@ app.get('/api/galleries', wrap(async (req, res) => {
 }));
 
 app.get('/api/team', wrap(async (req, res) => {
-  const list = await TeamMember.find({ isPublic: true }).select('name role -_id').lean();
-  res.set('Cache-Control', 'public, max-age=300').json(list);
+  const list = await TeamMember.find({ isPublic: true }).sort({ order: 1, createdAt: 1 }).select('name role group photo updatedAt').lean();
+  res.set('Cache-Control', 'public, max-age=60').json(list.map(m => ({
+    name: m.name, role: m.role || '', group: m.group || 'photography',
+    photoUrl: m.photo ? `/api/team/${m._id}/photo?v=${new Date(m.updatedAt || 0).getTime()}` : ''
+  })));
+}));
+
+// A team member's picture as a normal image (only for people marked "show on website").
+app.get('/api/team/:id/photo', wrap(async (req, res) => {
+  if (!isId(req.params.id)) return bad(res, 'Not found', 404);
+  const m = await TeamMember.findOne({ _id: req.params.id, isPublic: true }).select('photo').lean();
+  const mt = m && m.photo && /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(m.photo);
+  if (!mt) return bad(res, 'Not found', 404);
+  res.set({ 'Content-Type': mt[1], 'Cache-Control': 'public, max-age=86400', 'Cross-Origin-Resource-Policy': 'cross-origin' });
+  res.send(Buffer.from(mt[2], 'base64'));
 }));
 
 app.get('/api/prices', wrap(async (req, res) => {
@@ -473,13 +490,20 @@ crud('galleries', Gallery,
   d => (!d.name ? 'Enter a name.' : !URL_RE.test(d.link) ? 'The link must start with https://' : ''),
   null, { order: 1, createdAt: 1 });
 
+const PHOTO_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
 crud('team', TeamMember,
-  b => ({
-    name: line(b.name, 100), role: line(b.role, 100), phone: line(b.phone, 30), whatsapp: line(b.whatsapp, 30),
-    email: line(b.email, 120).toLowerCase(), note: line(b.note, 300), isPublic: b.isPublic === true
-  }),
-  d => (!d.name ? 'Enter a name.' : d.email && !EMAIL_RE.test(d.email) ? 'That email address is not valid.' : ''),
-  null, { name: 1 });
+  b => {
+    const d = {
+      name: line(b.name, 100), role: line(b.role, 100), phone: line(b.phone, 30), whatsapp: line(b.whatsapp, 30),
+      email: line(b.email, 120).toLowerCase(), note: line(b.note, 300), isPublic: b.isPublic === true,
+      group: b.group === 'videography' ? 'videography' : 'photography', order: Number(b.order) || 0
+    };
+    // photo: leave it out to keep the current one, send '' to remove it, or send a new image
+    if (typeof b.photo === 'string') d.photo = b.photo === '' ? '' : (b.photo.length <= 250000 && PHOTO_RE.test(b.photo) ? b.photo : 'INVALID');
+    return d;
+  },
+  d => (!d.name ? 'Enter a name.' : d.email && !EMAIL_RE.test(d.email) ? 'That email address is not valid.' : d.photo === 'INVALID' ? 'That picture could not be used. Try a smaller JPG or PNG.' : ''),
+  null, { order: 1, createdAt: 1 });
 
 crud('bookings', Booking,
   b => ({
