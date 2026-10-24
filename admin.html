@@ -573,17 +573,26 @@ function photoFile(file){
     fr.onerror=function(){rej(new Error('Could not read that file.'));};
     fr.onload=function(){
       var img=new Image();
-      img.onerror=function(){rej(new Error('That file is not a picture.'));};
+      img.onerror=function(){rej(new Error('That file is not a picture. Choose a JPG or PNG.'));};
       img.onload=function(){
-        var sz=Math.min(img.width,img.height),sx=(img.width-sz)/2,sy=Math.max(0,(img.height-sz)*0.2),c=document.createElement('canvas');
-        c.width=c.height=480;c.getContext('2d').drawImage(img,sx,sy,sz,sz,0,0,480,480);
-        res(c.toDataURL('image/jpeg',0.82));
+        var sz=Math.min(img.width,img.height),sx=(img.width-sz)/2,sy=Math.max(0,(img.height-sz)*0.2),out='';
+        /* try a good size first, then smaller until the picture is light enough (about 70 KB or less) */
+        var steps=[[400,0.82],[400,0.7],[320,0.7],[320,0.6],[256,0.6],[200,0.5]];
+        for(var k=0;k<steps.length;k++){
+          var c=document.createElement('canvas');c.width=c.height=steps[k][0];
+          c.getContext('2d').drawImage(img,sx,sy,sz,sz,0,0,steps[k][0],steps[k][0]);
+          out=c.toDataURL('image/jpeg',steps[k][1]);
+          if(out.length<=70000)break;
+        }
+        if(out.length>200000){rej(new Error('That picture is too detailed to shrink. Please choose a different photo.'));return;}
+        res(out);
       };
       img.src=fr.result;
     };
     fr.readAsDataURL(file);
   });
 }
+function teamErr(e){return /too large|413/i.test(e.message)?'The server refused the photo because it is still the old version. Push the new server.js to GitHub, wait until Render says Live, then try again.':e.message;}
 VIEWS.team=async function(v){
   var items=await api('/admin/team'),host=el('div'),list=el('div','card');cache.team=items;
   v.textContent='';
@@ -598,7 +607,7 @@ VIEWS.team=async function(v){
     function showPrev(){var n=teamThumb({name:it&&it.name,photo:ph},true);prev.replaceWith(n);prev=n;}
     prev=teamThumb({name:it&&it.name,photo:ph},true);
     fi.type='file';fi.accept='image/*';
-    fi.onchange=function(){var f=fi.files&&fi.files[0];if(!f)return;photoFile(f).then(function(d){ph=d;changed=true;showPrev();say('Photo ready. Press Save to keep it.');}).catch(function(e){say(e.message,1);});};
+    fi.onchange=function(){var f=fi.files&&fi.files[0];if(!f)return;photoFile(f).then(function(d){ph=d;changed=true;showPrev();say('Photo ready ('+Math.round(d.length*0.75/1024)+' KB). Press Save to keep it.');}).catch(function(e){say(e.message,1);});};
     var col=el('div');col.appendChild(el('label','','Photo (cropped to a square automatically)'));col.appendChild(fi);col.appendChild(rm);
     pc.appendChild(prev);pc.appendChild(col);
     var f=form(it?'Edit member':'Add member',[
@@ -610,7 +619,13 @@ VIEWS.team=async function(v){
     ],Object.assign({},it||{isPublic:true},{grp:it&&it.group==='videography'?'Videography Team':'Photography Team'}),async function(o){
       var d={name:o.name,role:o.role,group:/video/i.test(o.grp)?'videography':'photography',phone:o.phone,whatsapp:o.whatsapp,email:o.email,note:o.note,order:o.order,isPublic:o.isPublic};
       if(changed)d.photo=ph;
-      await api(it?'/admin/team/'+it._id:'/admin/team',it?'PUT':'POST',d);say('Saved.');go('team');
+      try{await api(it?'/admin/team/'+it._id:'/admin/team',it?'PUT':'POST',d);}
+      catch(e){throw new Error(d.photo?teamErr(e):e.message);}
+      if(d.photo){
+        var back=await api('/admin/team'),mine=it?back.filter(function(x){return x._id===it._id;})[0]:back.filter(function(x){return x.name===d.name&&x.photo;})[0];
+        if(!mine||!mine.photo){go('team');say('Saved, but the server did not keep the photo. The server is the old version. Push the new server.js, wait until Render says Live, then add the photo again.',1);return;}
+      }
+      say('Saved.');go('team');
     },function(){host.textContent='';});
     f.insertBefore(pc,f.querySelector('button'));
     host.appendChild(f);window.scrollTo({top:0,behavior:'smooth'});
@@ -623,7 +638,7 @@ VIEWS.team=async function(v){
     if(!todo.length){say('All the people shown on your website are already here.');return;}
     if(!confirm('Add '+todo.length+' people (with photos) that are shown on your website now? Anyone already in this list stays.'))return;
     var n=0;
-    for(var k=0;k<todo.length;k++){try{await api('/admin/team','POST',Object.assign({isPublic:true,order:k+1},todo[k]));n++;}catch(x){say(x.message,1);break;}}
+    for(var k=0;k<todo.length;k++){try{await api('/admin/team','POST',Object.assign({isPublic:true,order:k+1},todo[k]));n++;}catch(x){say(teamErr(x),1);break;}}
     say(n+' added.');go('team');
   }
   if(!items.length)list.appendChild(el('p','empty','Nobody here yet. Add a member, or tap "Add the team shown on my website".'));
