@@ -78,6 +78,12 @@ button.alt{background:rgba(255,255,255,.1);color:#fff;margin-left:.4rem;}
 .tmb.big{width:120px;height:120px;font-size:.75rem;text-align:center;}
 .photoctl{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin:.8rem 0;padding:.8rem;border:1px dashed rgba(255,255,255,.2);border-radius:12px;}
 .photoctl input[type=file]{max-width:100%;}
+/* show / hide password eye */
+.pwwrap{position:relative;}
+.pwwrap input{padding-right:3rem;}
+.pweye{position:absolute;right:.35rem;top:50%;transform:translateY(-50%);width:2.2rem;height:2.2rem;min-width:0;padding:0;margin:0;border:0;border-radius:50%;background:transparent;color:rgba(255,255,255,.75);box-shadow:none;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.pweye:hover{color:#d4af37;background:rgba(255,255,255,.08);}
+.pweye svg{width:20px;height:20px;display:block;}
 </style>
 </head>
 <body>
@@ -143,7 +149,7 @@ function form(title,fields,v,save,cancel,label){
       if(f.t==='select'){inp=el('select');f.o.forEach(function(o){var op=el('option','',o);op.value=o;inp.appendChild(op);});inp.value=v[f.k]||f.o[0];}
       else if(f.t==='area'){inp=el('textarea');inp.rows=f.rows||3;inp.value=v[f.k]||'';}
       else{inp=el('input');inp.type=f.t||'text';inp.value=f.t==='date'?(f.md&&v[f.k]?'2000-'+v[f.k]:day(v[f.k])):(v[f.k]==null?'':v[f.k]);if(f.p)inp.placeholder=f.p;}
-      inp.id=id;w.appendChild(inp);get[f.k]=function(){return inp.value.trim?inp.value.trim():inp.value;};
+      inp.id=id;w.appendChild(inp);if(f.t==='password')withEye(inp);get[f.k]=function(){return inp.value.trim?inp.value.trim():inp.value;};
     }
     row.appendChild(w);
   });
@@ -154,7 +160,7 @@ function form(title,fields,v,save,cancel,label){
 
 /* ---------- login / tabs ---------- */
 var TABS=[['dash','Dashboard'],['enq','Enquiries'],['rev','Reviews'],['book','Bookings'],['cal','Calendar'],['price','Prices & header'],['team','Team'],['gal','Galleries'],['cli','Clients'],['hol','Holidays'],['exp','Expenses'],['rep','Reports'],['xp','Export']];
-function logout(){tok='';try{sessionStorage.removeItem('zt');}catch(e){}$('app').classList.add('hide');$('lock').classList.remove('hide');$('pw').value='';}
+function logout(){tok='';try{sessionStorage.removeItem('zt');}catch(e){}$('app').classList.add('hide');$('lock').classList.remove('hide');$('pw').value='';$('pw').type='password';}
 function start(){
   $('lock').classList.add('hide');$('app').classList.remove('hide');
   var t=$('tabs');t.textContent='';
@@ -166,9 +172,23 @@ function go(t){
   var v=$('view');v.textContent='Loading...';
   Promise.resolve(VIEWS[t](v)).catch(function(e){v.textContent='';say(e.message+' (If the server was idle it can take up to a minute to wake. Try again.)',1);});
 }
+/* show / hide password */
+var EYE_ON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+var EYE_OFF='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.9 10.9 0 0 1 12 19C5 19 1 12 1 12a19.8 19.8 0 0 1 5.06-5.94M9.9 4.24A10.4 10.4 0 0 1 12 4c7 0 11 8 11 8a19.5 19.5 0 0 1-3.17 4.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+function eyeBtn(inp){
+  var b=el('button','pweye');b.type='button';b.innerHTML=EYE_ON;b.title='Show password';b.setAttribute('aria-label','Show password');b.setAttribute('aria-pressed','false');
+  b.onclick=function(){
+    var show=inp.type==='password';inp.type=show?'text':'password';
+    b.innerHTML=show?EYE_OFF:EYE_ON;b.title=show?'Hide password':'Show password';
+    b.setAttribute('aria-label',b.title);b.setAttribute('aria-pressed',show?'true':'false');inp.focus();
+  };
+  return b;
+}
+function withEye(inp){var w=el('div','pwwrap');inp.parentNode.insertBefore(w,inp);w.appendChild(inp);w.appendChild(eyeBtn(inp));return w;}
+withEye($('pw'));
 $('go').onclick=async function(){
   var m=$('lm');m.textContent='Signing in. The server may need up to a minute to wake up...';
-  try{var d=await api('/admin/login','POST',{email:$('em').value.trim(),password:$('pw').value});tok=d.token;try{sessionStorage.setItem('zt',tok);}catch(e){}m.textContent='';start();}
+  try{var d=await api('/admin/login','POST',{email:$('em').value.trim(),password:$('pw').value});tok=d.token;try{sessionStorage.setItem('zt',tok);}catch(e){}m.textContent='';$('pw').type='password';start();}
   catch(e){m.textContent=e.message;}
 };
 $('pw').addEventListener('keydown',function(e){if(e.key==='Enter')$('go').click();});
