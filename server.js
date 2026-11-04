@@ -541,6 +541,11 @@ admin.delete('/bookings/:id/payments/:pid', wrap(async (req, res) => {
   res.json(b);
 }));
 
+// Who the website sends email as, and where client replies arrive (shown in the admin panel).
+admin.get('/email-info', wrap(async (req, res) => {
+  res.json({ enabled: !!mailer, from: env.MAIL_FROM || env.SMTP_USER || '', replyTo: env.NOTIFY_EMAIL || env.ADMIN_EMAIL || '' });
+}));
+
 admin.post('/test-email', wrap(async (req, res) => {
   if (!mailer) return bad(res, 'Email is not set up on the server yet. Add BREVO_API_KEY and MAIL_FROM in Render, then redeploy.');
   const to = env.NOTIFY_EMAIL || env.ADMIN_EMAIL;
