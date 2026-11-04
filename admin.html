@@ -84,6 +84,16 @@ button.alt{background:rgba(255,255,255,.1);color:#fff;margin-left:.4rem;}
 .pweye{position:absolute;right:.35rem;top:50%;transform:translateY(-50%);width:2.2rem;height:2.2rem;min-width:0;padding:0;margin:0;border:0;border-radius:50%;background:transparent;color:rgba(255,255,255,.75);box-shadow:none;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .pweye:hover{color:#d4af37;background:rgba(255,255,255,.08);}
 .pweye svg{width:20px;height:20px;display:block;}
+/* dashboard cards you can tap */
+.stat{cursor:pointer;transition:transform .15s,border-color .15s;}
+.stat:hover,.stat:focus{border-color:#d4af37;transform:translateY(-2px);outline:none;}
+.stat small{display:block;margin-top:.3rem;font-size:.62rem;color:#d4af37;}
+.seeall{margin-top:.6rem;}
+.okline{color:#7fe3a6;}
+.reply .meta{display:block;margin:.15rem 0;color:rgba(255,255,255,.8);}
+.reply .meta b{color:#d4af37;margin-right:.3rem;}
+.reply a.lk{display:inline-flex;align-items:center;}
+.sortbar label{display:block;margin-bottom:.4rem;}
 </style>
 </head>
 <body>
@@ -194,16 +204,35 @@ $('go').onclick=async function(){
 $('pw').addEventListener('keydown',function(e){if(e.key==='Enter')$('go').click();});
 $('out').onclick=logout;
 
+/* tapping a dashboard card opens the matching tab (and can pre-set a filter or sort there) */
+var pre={};
+function jump(tab,p){pre=p||{};go(tab);window.scrollTo({top:0,behavior:'smooth'});}
 /* ---------- dashboard ---------- */
 VIEWS.dash0=async function(v){
   var r=await Promise.all([api('/admin/stats'),api('/admin/bookings')]),s=r[0];v.textContent='';
   var g=el('div','stats');
-  [['New enquiries',s.newEnquiries],['Upcoming shoots',s.upcomingBookings],['Money owed',ksh(s.outstandingBalance)]].forEach(function(x){var b=el('div','stat');b.appendChild(el('b','',String(x[1])));b.appendChild(el('span','',x[0]));g.appendChild(b);});
+  [['New enquiries',s.newEnquiries,'enq',{enq:'new'}],['Upcoming shoots',s.upcomingBookings,'book',{bookSort:'upcoming'}],['Money owed',ksh(s.outstandingBalance),'book',{bookSort:'owed'}]].forEach(function(x){
+    var b=el('div','stat');b.tabIndex=0;b.setAttribute('role','button');b.setAttribute('aria-label',x[0]+': '+x[1]+'. Tap to open.');
+    b.appendChild(el('b','',String(x[1])));b.appendChild(el('span','',x[0]));b.appendChild(el('small','','Tap to open'));
+    b.onclick=function(){jump(x[2],x[3]);};b.onkeydown=function(ev){if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();jump(x[2],x[3]);}};
+    g.appendChild(b);});
   v.appendChild(g);
   var c=el('div','card');c.appendChild(el('h2','','Next shoots'));
   var up=r[1].filter(function(b){return day(b.eventDate)>=today&&b.status!=='cancelled';}).slice(0,6);
   if(!up.length)c.appendChild(el('p','empty','No upcoming shoots. Add one in Bookings.'));
-  up.forEach(function(b){var w=el('div','item'),d=el('div','info');d.appendChild(el('b','',nice(b.eventDate)+' - '+b.clientName));d.appendChild(el('small','',(b.service||'')+(b.location?' - '+b.location:'')+' - balance '+ksh(b.balance)));w.appendChild(d);c.appendChild(w);});
+  up.forEach(function(b){
+    var w=el('div','item'),d=el('div','info'),bt=el('div','btns');
+    d.appendChild(el('b','',nice(b.eventDate)+' - '+b.clientName));
+    d.appendChild(el('small','',(b.service||'')+(b.location?' - '+b.location:'')+' - balance '+ksh(b.balance)));
+    d.appendChild(el('small',b.delivery==='delivered'?'okline':'','Delivery: '+(b.delivery==='delivered'?'delivered \u2713':(b.delivery||'not started'))));
+    if(b.delivery!=='delivered')bt.appendChild(btn('Mark delivered','go',async function(){
+      if(day(b.eventDate)>today&&!confirm('This shoot has not happened yet. Mark it as delivered anyway?'))return;
+      var dd=pay(b);dd.delivery='delivered';
+      try{await api('/admin/bookings/'+b._id,'PUT',dd);say('Marked delivered.');go('dash');}catch(x){say(x.message,1);}
+    }));
+    w.appendChild(d);w.appendChild(bt);c.appendChild(w);
+  });
+  c.appendChild(btn('Open calendar','alt seeall',function(){jump('cal');}));
   v.appendChild(c);
 };
 
@@ -229,6 +258,7 @@ VIEWS.dash=async function(v){
     if(intl(x.c.phone))b.appendChild(lnk('Birthday WhatsApp','wa',waUrl(x.c.phone,bdayText(x.c)),1));
     w.appendChild(i);w.appendChild(b);bc.appendChild(w);
   });
+  bc.appendChild(btn('Open Clients','alt seeall',function(){jump('cli');}));
   v.appendChild(bc);
   var aw=r[1].filter(function(b){return b.eventDate&&day(b.eventDate)<today&&b.status!=='cancelled'&&b.delivery!=='delivered';}),dc=el('div','card');
   dc.appendChild(el('h2','','Waiting for delivery ('+aw.length+')'));
@@ -239,6 +269,7 @@ VIEWS.dash=async function(v){
     bt.appendChild(btn('Mark delivered','go',async function(){var d=pay(b);d.delivery='delivered';try{await api('/admin/bookings/'+b._id,'PUT',d);go('dash');}catch(x){say(x.message,1);}}));
     w.appendChild(i);w.appendChild(bt);dc.appendChild(w);
   });
+  dc.appendChild(btn('Open Bookings','alt seeall',function(){jump('book',{bookSort:'delivery'});}));
   v.appendChild(dc);
   var pend=r[2].filter(function(x){return x.status==='pending';});
   if(pend.length){var rc=el('div','card');rc.appendChild(el('h2','','Reviews waiting for approval ('+pend.length+')'));
@@ -296,12 +327,27 @@ function replyText(e){
     body:'Hi '+first+',\n\nThank you for contacting ZOOM Photography & Videography. We would be glad to help with your '+what+(dt?' on '+dt:'')+'.\n\n'+ask+'\n\nOnce I have those details I will send you a quote and the next steps.\n\nWarm regards,\nRon Morogo\nZOOM Photography & Videography\n0787 593 983'
   };
 }
+var EMAILINFO;
+async function emailInfo(){if(EMAILINFO!==undefined)return EMAILINFO;try{EMAILINFO=await api('/admin/email-info');}catch(e){EMAILINFO=null;}return EMAILINFO;}
 function buildReply(panel,e,sel){
   if(panel.dataset.built)return;panel.dataset.built='1';
   var t=replyText(e),sj=el('input'),ms=el('textarea'),row=el('div','btns');
+  var meta=el('div'),mFrom=el('small','meta'),mTo=el('small','meta'),mRe=el('small','meta'),mWarn=el('small','meta warn');
+  function fill(info){
+    mFrom.textContent='';mFrom.appendChild(el('b','','From:'));
+    mFrom.appendChild(document.createTextNode(info&&info.from?info.from:'your ZOOM email address (set MAIL_FROM on Render)'));
+    mTo.textContent='';mTo.appendChild(el('b','','To:'));
+    mTo.appendChild(document.createTextNode(((e.firstName||'')+' '+(e.lastName||'')).trim()+' <'+e.email+'>'));
+    mRe.textContent='';
+    if(info&&info.replyTo){mRe.appendChild(el('b','','Their reply goes to:'));mRe.appendChild(document.createTextNode(info.replyTo));}
+    mWarn.textContent=info&&info.enabled===false?'Email sending is not set up on the server yet, so "Send email" will not work. The two buttons that open your own email app or Gmail still do.':'';
+    mWarn.style.display=mWarn.textContent?'block':'none';
+  }
+  fill(null);emailInfo().then(fill);
+  [mFrom,mTo,mRe,mWarn].forEach(function(x){meta.appendChild(x);});
   sj.value=t.subject;sj.maxLength=150;sj.setAttribute('aria-label','Subject');
   ms.value=t.body;ms.rows=12;ms.maxLength=5000;ms.setAttribute('aria-label','Message');
-  panel.appendChild(el('small','','To: '+e.email+'   (edit anything below before you send)'));
+  panel.appendChild(meta);panel.appendChild(el('small','','Edit anything below before you send.'));
   panel.appendChild(sj);panel.appendChild(ms);
   var send=btn('Send email','go',async function(){
     if(!confirm('Send this email to '+e.email+'?'))return;
@@ -314,7 +360,15 @@ function buildReply(panel,e,sel){
     send.disabled=false;send.textContent='Send email';
   });
   row.appendChild(send);
-  row.appendChild(btn('Open in my email app','',function(){window.location.href='mailto:'+e.email+'?subject='+encodeURIComponent(sj.value)+'&body='+encodeURIComponent(ms.value);}));
+  /* real links, so a tap always works: they pick up whatever you typed at the moment you tap */
+  var app=lnk('Open in my email app','','mailto:'+e.email,0),gm=lnk('Open in Gmail','','https://mail.google.com/',1);
+  app.setAttribute('role','button');gm.setAttribute('role','button');
+  function mailto(){return 'mailto:'+e.email+'?subject='+encodeURIComponent(sj.value)+'&body='+encodeURIComponent(ms.value);}
+  function gmail(){return 'https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(e.email)+'&su='+encodeURIComponent(sj.value)+'&body='+encodeURIComponent(ms.value);}
+  app.href=mailto();gm.href=gmail();
+  ['pointerdown','focus','mouseenter','click'].forEach(function(ev){app.addEventListener(ev,function(){app.href=mailto();});gm.addEventListener(ev,function(){gm.href=gmail();});});
+  sj.addEventListener('input',function(){app.href=mailto();gm.href=gmail();});ms.addEventListener('input',function(){app.href=mailto();gm.href=gmail();});
+  row.appendChild(app);row.appendChild(gm);
   row.appendChild(btn('Close','',function(){panel.hidden=true;}));
   panel.appendChild(row);
 }
@@ -323,6 +377,7 @@ function buildReply(panel,e,sel){
 VIEWS.enq=async function(v){
   v.textContent='';var bar=el('div','card'),st=el('select'),q=el('input'),list=el('div','card');
   ['all'].concat(ENQ).forEach(function(s){var o=el('option','',s);o.value=s;st.appendChild(o);});
+  if(pre.enq){st.value=pre.enq;pre.enq=null;}
   q.placeholder='Search name, phone or message';q.style.marginTop='.6rem';
   bar.appendChild(st);bar.appendChild(q);bar.appendChild(btn('Search','',load));v.appendChild(bar);v.appendChild(list);
   async function load(){
@@ -364,10 +419,29 @@ function clash(b,all,self){
 var BF=[{k:'clientName',l:'Client name'},{k:'clientPhone',l:'Phone',t:'tel'},{k:'clientEmail',l:'Email',t:'email'},{k:'service',l:'Service',p:'e.g. Wedding Signature Package'},{k:'eventDate',l:'Event date',t:'date'},{k:'location',l:'Location'},{k:'price',l:'Agreed price (Ksh)',t:'number'},{k:'status',l:'Status',t:'select',o:BS},{k:'team',l:'Team on this shoot',t:'team'},{k:'delivery',l:'Delivery progress',t:'select',o:DL},{k:'checklist',l:'Shoot checklist (shot list, gear, call time, venue contact)',t:'area',rows:5},{k:'notes',l:'Notes',t:'area'}];
 async function loadTeam(){cache.team=await api('/admin/team');}
 
+var SORTS=[['upcoming','Upcoming first, then past'],['date_asc','Event date: oldest first'],['date_desc','Event date: newest first'],['added','Recently added'],['name','Client name A to Z'],['owed','Amount owed: highest first'],['price','Price: highest first'],['status','Status'],['delivery','Delivery: not delivered first']];
+function sortBookings(list,k){
+  var td=today,num=function(x){return Number(x)||0;},dd=function(b){return day(b.eventDate);};
+  var far='9999-12-31',cmp={
+    date_asc:function(x,y){return (dd(x)||far)<(dd(y)||far)?-1:(dd(x)||far)>(dd(y)||far)?1:0;},
+    date_desc:function(x,y){return (dd(y)||'')<(dd(x)||'')?-1:(dd(y)||'')>(dd(x)||'')?1:0;},
+    added:function(x,y){return new Date(y.createdAt||0)-new Date(x.createdAt||0);},
+    name:function(x,y){return String(x.clientName||'').toLowerCase().localeCompare(String(y.clientName||'').toLowerCase());},
+    owed:function(x,y){return num(y.balance)-num(x.balance);},
+    price:function(x,y){return num(y.price)-num(x.price);},
+    status:function(x,y){return BS.indexOf(x.status)-BS.indexOf(y.status);},
+    delivery:function(x,y){var a=x.delivery==='delivered'?1:0,b=y.delivery==='delivered'?1:0;return a-b||cmp.date_asc(x,y);},
+    upcoming:function(x,y){var fx=dd(x)>=td,fy=dd(y)>=td;if(fx!==fy)return fx?-1:1;return fx?cmp.date_asc(x,y):cmp.date_desc(x,y);}
+  };
+  return list.sort(cmp[k]||cmp.upcoming);
+}
 VIEWS.book=async function(v){
-  var r=await Promise.all([api('/admin/bookings'),loadTeam()]),all=r[0],host=el('div'),list=el('div','card');
-  v.textContent='';v.appendChild(btn('+ New booking','',function(){open();}));v.appendChild(host);v.appendChild(list);
-  list.appendChild(el('h2','',all.length+' bookings'));
+  var r=await Promise.all([api('/admin/bookings'),loadTeam()]),all=r[0],host=el('div'),list=el('div','card'),bar=el('div','card sortbar'),ss=el('select');
+  v.textContent='';v.appendChild(btn('+ New booking','',function(){open();}));v.appendChild(host);
+  SORTS.forEach(function(x){var o=el('option','',x[1]);o.value=x[0];ss.appendChild(o);});
+  var saved='';try{saved=localStorage.getItem('zoomBookSort')||'';}catch(e){}
+  ss.value=pre.bookSort||saved||'upcoming';if(!ss.value)ss.value='upcoming';pre.bookSort=null;
+  bar.appendChild(el('label','','Sort bookings by'));bar.appendChild(ss);v.appendChild(bar);v.appendChild(list);
   function open(b){
     host.textContent='';host.appendChild(form(b?'Edit booking':'New booking',BF,b||{status:'pending'},async function(o){
       var data=Object.assign(b?pay(b):{},o),w=clash(data,all,b&&b._id);
@@ -376,8 +450,10 @@ VIEWS.book=async function(v){
     },function(){host.textContent='';}));
     window.scrollTo({top:0,behavior:'smooth'});
   }
+  function draw(){
+  list.textContent='';list.appendChild(el('h2','',all.length+' bookings'));
   if(!all.length)list.appendChild(el('p','empty','No bookings yet. Add one, or turn an enquiry into a booking.'));
-  all.forEach(function(b){
+  sortBookings(all.slice(),ss.value).forEach(function(b){
     var w=el('div','item'),i=el('div','info'),bt=el('div','btns'),sel=el('select','mini'),pp=el('div'),warn=clash(b,all,b._id);
     i.appendChild(el('b','',b.clientName));
     i.appendChild(el('span','role',nice(b.eventDate)+(b.service?' - '+b.service:'')));
@@ -395,6 +471,9 @@ VIEWS.book=async function(v){
     bt.appendChild(btn('Delete','del',async function(){if(!confirm('Delete booking for '+b.clientName+'?'))return;try{await api('/admin/bookings/'+b._id,'DELETE');go('book');}catch(x){say(x.message,1);}}));
     w.appendChild(i);w.appendChild(bt);w.appendChild(pp);list.appendChild(w);
   });
+  }
+  ss.onchange=function(){try{localStorage.setItem('zoomBookSort',ss.value);}catch(e){}draw();};
+  draw();
 };
 function payPanel(b,host){
   var h=el('div','paybox');
