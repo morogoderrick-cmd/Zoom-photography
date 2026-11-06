@@ -94,6 +94,10 @@ button.alt{background:rgba(255,255,255,.1);color:#fff;margin-left:.4rem;}
 .reply .meta b{color:#d4af37;margin-right:.3rem;}
 .reply a.lk{display:inline-flex;align-items:center;}
 .sortbar label{display:block;margin-bottom:.4rem;}
+/* clients: two lists */
+.subtabs{display:flex;flex-wrap:wrap;gap:.5rem;margin:0 0 .9rem;}
+.cctl{display:grid;gap:.6rem;}
+@media(min-width:700px){.cctl{grid-template-columns:2fr 1fr 1fr;}}
 </style>
 </head>
 <body>
@@ -258,7 +262,7 @@ VIEWS.dash=async function(v){
     if(intl(x.c.phone))b.appendChild(lnk('Birthday WhatsApp','wa',waUrl(x.c.phone,bdayText(x.c)),1));
     w.appendChild(i);w.appendChild(b);bc.appendChild(w);
   });
-  bc.appendChild(btn('Open Clients','alt seeall',function(){jump('cli');}));
+  bc.appendChild(btn('Open Clients','alt seeall',function(){jump('cli',{cli:'birthday'});}));
   v.appendChild(bc);
   var aw=r[1].filter(function(b){return b.eventDate&&day(b.eventDate)<today&&b.status!=='cancelled'&&b.delivery!=='delivered';}),dc=el('div','card');
   dc.appendChild(el('h2','','Waiting for delivery ('+aw.length+')'));
@@ -777,7 +781,7 @@ async function bmForm(){
   card.appendChild(btn('Use the ZOOM birthday message','alt',function(){card.querySelector('input').value=BDAY_SUBJECT;card.querySelector('textarea').value=BDAY_BODY;say('The ZOOM birthday message is filled in. Press Save to keep it.');}));
   v.appendChild(card);
 }
-VIEWS.cli=crudTab('/admin/clients','Clients',
+VIEWS.cli=crudTab('/admin/clients','Birthday clients',
   [{k:'name',l:'Full name'},{k:'email',l:'Email',t:'email'},{k:'phone',l:'Phone',t:'tel'},{k:'birthday',l:'Birthday (year does not matter)',t:'date',md:1},{k:'marketingOk',l:'Client agreed to receive emails from ZOOM',t:'check'},{k:'note',l:'Notes'}],
   function(c){return [c.email||'No email saved',c.phone,c.birthday?'Birthday: '+bday(c.birthday):'No birthday saved',c.marketingOk?'Agreed to emails':{t:'Has not agreed to emails yet',cls:'warn'}];},
   function(c){var a=[];
@@ -789,6 +793,76 @@ VIEWS.cli=crudTab('/admin/clients','Clients',
 
 VIEWS.cli0=VIEWS.cli;
 VIEWS.cli=async function(v){await loadBm();return VIEWS.cli0(v);};
+
+/* ---------- clients: birthday clients (above) and all clients ---------- */
+var cliSub='birthday',cliQ='',cliFilter='all',cliSort='az';
+var CLI_FIELDS=[{k:'name',l:'Full name'},{k:'email',l:'Email',t:'email'},{k:'phone',l:'Phone',t:'tel'},{k:'birthday',l:'Birthday (year does not matter)',t:'date',md:1},{k:'marketingOk',l:'Client agreed to receive emails from ZOOM',t:'check'},{k:'note',l:'Notes'}];
+async function allClients(v){
+  var items=await api('/admin/clients'),host=el('div'),ctl=el('div','card cctl'),list=el('div','card'),q=el('input'),fs=el('select'),ss=el('select');
+  v.appendChild(btn('+ Add client','',function(){open();}));
+  v.appendChild(btn('Import from enquiries and bookings','alt',async function(){
+    try{var r=await api('/admin/clients/import','POST');say('Added '+r.added+' new client'+(r.added===1?'':'s')+' with an email address.');go('cli');}catch(e){say(e.message,1);}
+  }));
+  v.appendChild(host);
+  q.type='search';q.placeholder='Search name, phone or email';q.value=cliQ;q.setAttribute('aria-label','Search clients');
+  [['all','All clients'],['email','Has an email'],['phone','Has a phone number'],['missing','Missing an email or phone']].forEach(function(x){var o=el('option','',x[1]);o.value=x[0];fs.appendChild(o);});fs.value=cliFilter;fs.setAttribute('aria-label','Show');
+  [['az','Name A to Z'],['za','Name Z to A'],['new','Recently added']].forEach(function(x){var o=el('option','',x[1]);o.value=x[0];ss.appendChild(o);});ss.value=cliSort;ss.setAttribute('aria-label','Sort');
+  ctl.appendChild(q);ctl.appendChild(fs);ctl.appendChild(ss);
+  v.appendChild(ctl);v.appendChild(list);
+  function open(it){
+    host.textContent='';
+    host.appendChild(form(it?'Edit client':'Add client',CLI_FIELDS,it||{},async function(o){await api(it?'/admin/clients/'+it._id:'/admin/clients',it?'PUT':'POST',o);say('Saved.');go('cli');},function(){host.textContent='';}));
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+  function shown(){
+    var t=q.value.trim().toLowerCase(),d=String(t).replace(/\D/g,'');
+    var out=items.filter(function(c){
+      if(t&&!(String(c.name||'').toLowerCase().indexOf(t)>-1||String(c.email||'').toLowerCase().indexOf(t)>-1||String(c.phone||'').toLowerCase().indexOf(t)>-1||(d&&String(c.phone||'').replace(/\D/g,'').indexOf(d)>-1)))return false;
+      if(fs.value==='email'&&!c.email)return false;
+      if(fs.value==='phone'&&!c.phone)return false;
+      if(fs.value==='missing'&&c.email&&c.phone)return false;
+      return true;
+    });
+    var nm=function(c){return String(c.name||'').toLowerCase();};
+    if(ss.value==='za')out.sort(function(a,b){return nm(b).localeCompare(nm(a));});
+    else if(ss.value==='new')out.sort(function(a,b){return new Date(b.createdAt||0)-new Date(a.createdAt||0);});
+    else out.sort(function(a,b){return nm(a).localeCompare(nm(b));});
+    return out;
+  }
+  function draw(){
+    cliQ=q.value;cliFilter=fs.value;cliSort=ss.value;
+    var rows=shown();list.textContent='';
+    list.appendChild(el('h2','','All clients ('+rows.length+(rows.length!==items.length?' of '+items.length:'')+')'));
+    if(!items.length)list.appendChild(el('p','empty','No clients yet. Add one, or press "Import from enquiries and bookings".'));
+    else if(!rows.length)list.appendChild(el('p','empty','No clients match your search.'));
+    rows.forEach(function(c){
+      var w=el('div','item'),i=el('div','info'),b=el('div','btns'),n=intl(c.phone);
+      i.style.flex='1 1 190px';i.appendChild(el('b','',c.name));
+      if(c.phone)i.appendChild(el('small','','Phone: '+c.phone));
+      if(c.email)i.appendChild(el('small','','Email: '+c.email));
+      if(!c.phone&&!c.email)i.appendChild(el('small','warn','No contact details saved yet'));
+      if(c.birthday)i.appendChild(el('small','','Birthday: '+bday(c.birthday)));
+      if(c.note)i.appendChild(el('small','','Note: '+c.note));
+      if(c.phone&&n)b.appendChild(lnk('Call','go','tel:+'+n));
+      if(n)b.appendChild(lnk('WhatsApp','wa','https://wa.me/'+n,1));
+      if(c.email)b.appendChild(lnk('Email','','mailto:'+c.email));
+      b.appendChild(btn('Edit','',function(){open(c);}));
+      b.appendChild(btn('Remove','del',async function(){if(!confirm('Remove '+c.name+'?'))return;try{await api('/admin/clients/'+c._id,'DELETE');go('cli');}catch(x){say(x.message,1);}}));
+      w.appendChild(teamThumb(c));w.appendChild(i);w.appendChild(b);list.appendChild(w);
+    });
+  }
+  q.oninput=draw;fs.onchange=draw;ss.onchange=draw;
+  draw();
+}
+VIEWS.cli1=VIEWS.cli;
+VIEWS.cli=async function(v){
+  if(pre.cli){cliSub=pre.cli;pre.cli=null;}
+  v.textContent='';
+  var bar=el('div','subtabs'),host=el('div');
+  [['birthday','Birthday clients'],['all','All clients']].forEach(function(x){bar.appendChild(btn(x[1],cliSub===x[0]?'':'alt',function(){cliSub=x[0];go('cli');}));});
+  v.appendChild(bar);v.appendChild(host);
+  if(cliSub==='all')await allClients(host);else await VIEWS.cli1(host);
+};
 
 /* ---------- Kenyan national days and greetings ---------- */
 var HOLKEY='zoomHolidayMsg';
@@ -898,4 +972,3 @@ if(tok)start();
 </script>
 </body>
 </html>
-
