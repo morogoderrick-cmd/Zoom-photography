@@ -173,7 +173,7 @@ function form(title,fields,v,save,cancel,label){
 }
 
 /* ---------- login / tabs ---------- */
-var TABS=[['dash','Dashboard'],['enq','Enquiries'],['rev','Reviews'],['book','Bookings'],['cal','Calendar'],['price','Prices & header'],['team','Team'],['gal','Galleries'],['cli','Clients'],['hol','Holidays'],['exp','Expenses'],['rep','Reports'],['xp','Export']];
+var TABS=[['dash','Dashboard'],['enq','Enquiries'],['rev','Reviews'],['book','Bookings'],['cal','Calendar'],['price','Prices & header'],['off','Offers'],['team','Team'],['gal','Galleries'],['cli','Clients'],['hol','Holidays'],['exp','Expenses'],['rep','Reports'],['xp','Export']];
 function logout(){tok='';try{sessionStorage.removeItem('zt');}catch(e){}$('app').classList.add('hide');$('lock').classList.remove('hide');$('pw').value='';$('pw').type='password';}
 function start(){
   $('lock').classList.add('hide');$('app').classList.remove('hide');
@@ -563,7 +563,7 @@ VIEWS.cal=async function(v){
 };
 
 /* ---------- website prices ---------- */
-var PR=[['wedding-photography','Wedding Photography (from)',32000],['wedding-films','Wedding Films (from)',40000],['engagement','Engagement Shoot (from)',12000],['engagement-party','Engagement Party (from)',20000],['birthday','Birthday Shoot (from)',5000],['graduation','Graduation Shoot (from)',6500],['church','Church Coverage (from)',12000],['event','Event Coverage (from)',16000],['landscape','Landscape & Nature (from)',10500],['portrait','Portrait Sessions (from)',6500],['brand','Brand & Commercial (from)',28000],['travel','Travel & Documentary (from)',36000],['drone','Drone Aerial (from)',18000],['workshops','Workshops (from)',3000],['classic','Wedding package: Classic',32000],['signature','Wedding package: Signature',60000],['royal','Wedding package: Royal',85000]];
+var PR=[['wedding-photography','Wedding Photography (from)',32000],['wedding-films','Wedding Films (from)',40000],['engagement','Engagement Shoot (from)',12000],['engagement-party','Engagement Party (from)',20000],['birthday','Birthday Shoot (from)',5000],['graduation','Graduation Shoot (from)',2000],['church','Church Coverage (from)',12000],['event','Event Coverage (from)',16000],['landscape','Landscape & Nature (from)',10500],['portrait','Portrait Sessions (from)',3000],['brand','Brand & Commercial (from)',28000],['graphic-design','Graphic Design (from)',1500],['travel','Travel & Documentary (from)',36000],['drone','Drone Aerial (from)',18000],['workshops','Workshops (from)',3000],['classic','Wedding package: Classic',32000],['signature','Wedding package: Signature',60000],['royal','Wedding package: Royal',75000],['grad-1','Graduation package: Starter (7 photos)',2000],['grad-2','Graduation package: Standard (10 photos)',3000],['grad-3','Graduation package: Plus (12 photos)',3500],['grad-4','Graduation package: Premium (15 photos)',5000]];
 VIEWS.price=async function(v){
   var cur2=await api('/admin/prices'),vals={};v.textContent='';
   PR.forEach(function(p){vals[p[0]]=cur2[p[0]]!=null?cur2[p[0]]:p[2];});
@@ -571,9 +571,57 @@ VIEWS.price=async function(v){
     await api('/admin/prices','PUT',o);
     var back=await api('/admin/prices'),lost=PR.filter(function(p){return Number(back[p[0]])!==Number(o[p[0]]);}).map(function(p){return p[1];});
     if(lost.length){say('Saved, but the server did not keep: '+lost.join(', ')+'. Those prices will not change on your website until the server is updated to store them.',1);return;}
-    say('Saved. Your website shows the new prices within a minute.');
+    var pub=null;try{var rr=await fetch(API+'/api/prices',{cache:'no-store'});if(rr.ok)pub=await rr.json();}catch(e){}
+    if(!pub){say('Saved. I could not read the public price list just now (the server may be waking up). Open your website in a minute and press Ctrl+Shift+R.',1);return;}
+    var off=PR.filter(function(p){return Number(pub[p[0]])!==Number(o[p[0]]);}).map(function(p){return p[1];});
+    if(off.length){say('Saved, but the public price list does not match yet for: '+off.join(', ')+'. Wait a minute and save again.',1);return;}
+    say('Saved and checked. The public price list your website reads now matches. Open the website and press Ctrl+Shift+R. If the server was asleep, the first load can take up to a minute.');
   },null,'Save prices');
-  card.appendChild(btn('Use the new lower prices','alt',function(){var ins=card.querySelectorAll('input[type=number]');PR.forEach(function(q,i){if(ins[i])ins[i].value=q[2];});say('The new lower prices are filled in. Press Save prices to publish them.');}));
+  card.appendChild(btn('Use the suggested prices','alt',function(){var ins=card.querySelectorAll('input[type=number]');PR.forEach(function(q,i){if(ins[i])ins[i].value=q[2];});say('The suggested prices are filled in. Check them, then press Save prices to publish them.');}));
+  card.appendChild(lnk('Open my website','alt','index.html',1));
+  v.appendChild(card);
+};
+
+/* ---------- monthly offers ---------- */
+VIEWS.off=async function(v){
+  var o=await api('/admin/offers');
+  var items=(o.items||[]).map(function(i){return {name:i.name||'',price:i.price==null?'':i.price,note:i.note||''};});
+  v.textContent='';
+  var card=el('div','card'),rows=el('div');
+  card.appendChild(el('h2','','Monthly offers'));
+  card.appendChild(el('p','empty','This puts a gold "Offers" section near the top of your website, an Offers link in the menu, and the offer as the first message in the strip. It hides itself after the last day.'));
+  if(!o.saved)card.appendChild(el('p','empty','You have not saved your own offer yet, so the website is showing the November offer below. Change it and press Save offers.'));
+  function field(label,type,val,max){var w=el('div'),l=el('label','',label),i=el('input');i.type=type;i.value=val||'';if(max)i.maxLength=max;w.appendChild(l);w.appendChild(i);card.appendChild(w);return i;}
+  var lab=el('label','chk'),chk=el('input');chk.type='checkbox';chk.checked=!!o.enabled;lab.appendChild(chk);lab.appendChild(document.createTextNode(' Show the offers on my website'));card.appendChild(lab);
+  var title=field('Title, for example November Offers','text',o.title,60);
+  var sub=field('Short line under the title','text',o.subtitle,140);
+  var until=field('Last day (the offer hides itself after this day)','date',o.validUntil);
+  card.appendChild(el('h2','','Offers in this month'));card.appendChild(rows);
+  function draw(){
+    rows.textContent='';
+    if(!items.length)rows.appendChild(el('p','empty','No offers yet. Add one below.'));
+    items.forEach(function(it,i){
+      var w=el('div','item'),inf=el('div','info'),nm=el('input'),pr=el('input'),nt=el('input'),bt=el('div','btns');
+      nm.value=it.name;nm.maxLength=80;nm.placeholder='Offer, for example 5 edited photos';nm.setAttribute('aria-label','Offer '+(i+1)+' name');nm.oninput=function(){it.name=nm.value;};
+      pr.type='number';pr.min='0';pr.value=it.price;pr.placeholder='Price in Ksh (leave empty to show Ask us)';pr.setAttribute('aria-label','Offer '+(i+1)+' price');pr.oninput=function(){it.price=pr.value;};
+      nt.value=it.note;nt.maxLength=80;nt.placeholder='Small note, for example One person only';nt.setAttribute('aria-label','Offer '+(i+1)+' note');nt.oninput=function(){it.note=nt.value;};
+      inf.style.flex='1 1 260px';inf.appendChild(nm);inf.appendChild(pr);inf.appendChild(nt);
+      bt.appendChild(btn('Remove','del',function(){items.splice(i,1);draw();}));
+      w.appendChild(inf);w.appendChild(bt);rows.appendChild(w);
+    });
+  }
+  draw();
+  card.appendChild(btn('+ Add an offer','alt',function(){if(items.length>=8){say('You can have up to 8 offers.',1);return;}items.push({name:'',price:'',note:''});draw();}));
+  card.appendChild(btn('Save offers','',async function(){
+    var body={enabled:chk.checked,title:title.value.trim(),subtitle:sub.value.trim(),validUntil:until.value,items:items.filter(function(i){return String(i.name).trim();}).map(function(i){return {name:String(i.name).trim(),price:i.price===''?null:Number(i.price),note:String(i.note||'').trim()};})};
+    try{await api('/admin/offers','PUT',body);}catch(e){say(e.message,1);return;}
+    var pub=null;try{var r=await fetch(API+'/api/offers',{cache:'no-store'});if(r.ok)pub=await r.json();}catch(e){}
+    if(body.enabled&&pub&&!pub.active)say('Saved, but the website will not show it: check the last day is today or later.',1);
+    else if(!body.enabled)say('Saved. The offers are switched off, so the website hides them.');
+    else say(pub?'Saved and checked. Your website shows these offers. Press Ctrl+Shift+R on it. The first load can take up to a minute if the server was asleep.':'Saved. I could not read the public list just now; check your website in a minute.');
+    go('off');
+  }));
+  card.appendChild(lnk('Open my website','alt','index.html#offers',1));
   v.appendChild(card);
 };
 
