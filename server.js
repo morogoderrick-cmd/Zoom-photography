@@ -76,7 +76,7 @@ const Setting = mongoose.model('Setting', new mongoose.Schema({
 }));
 const PRICE_KEYS = ['wedding-photography', 'wedding-films', 'landscape', 'portrait', 'brand', 'travel', 'drone', 'workshops', 'classic', 'signature', 'royal'];
 // Newer services: stored when the admin panel sends them, but an older admin page that does not send them still works.
-const OPTIONAL_PRICE_KEYS = ['engagement', 'engagement-party', 'birthday', 'baby-shower', 'graduation', 'church', 'event'];
+const OPTIONAL_PRICE_KEYS = ['engagement', 'engagement-party', 'birthday', 'baby-shower', 'graduation', 'church', 'event', 'graphic-design', 'grad-1', 'grad-2', 'grad-3', 'grad-4'];
 
 const DELIVERY = ['not started', 'shot', 'editing', 'gallery sent', 'album printed', 'delivered'];
 const BOOK_STATUS = ['pending', 'confirmed', 'completed', 'cancelled'];
@@ -218,6 +218,35 @@ app.post('/api/contact', limiter(60 * 60 * 1000, 5, '❌ Too many messages. Plea
 app.get('/api/galleries', wrap(async (req, res) => {
   const list = await Gallery.find().sort({ order: 1, createdAt: 1 }).select('name link note -_id').lean();
   res.set('Cache-Control', 'public, max-age=60').json(list);
+}));
+
+
+/* ------------------------------ monthly offers ------------------------------ */
+// Shown on the website as a gold "offers" section while switched on and not past its last day.
+const DEFAULT_OFFERS = {
+  enabled: true, title: 'November Offers', subtitle: 'Limited slots this month. Book now.', validUntil: '2026-11-30',
+  items: [{ name: '5 edited photos', price: 3000, note: 'One person only' }, { name: '10 edited photos', price: 4000, note: 'One person only' }]
+};
+function cleanOffers(b) {
+  b = b || {};
+  const items = (Array.isArray(b.items) ? b.items : []).slice(0, 8).map(i => {
+    const n = i && i.price !== '' && i.price != null ? Number(i.price) : NaN;
+    return { name: line(i && i.name, 80), note: line(i && i.note, 80), price: Number.isFinite(n) && n >= 0 && n <= 10000000 ? Math.round(n) : null };
+  }).filter(i => i.name);
+  const vu = String(b.validUntil || '').slice(0, 10);
+  return { enabled: b.enabled === true, title: line(b.title, 60), subtitle: line(b.subtitle, 140), validUntil: /^\d{4}-\d{2}-\d{2}$/.test(vu) ? vu : '', items };
+}
+const nairobiToday = () => new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10);
+function publicOffer(v) {
+  const o = v ? cleanOffers(v) : DEFAULT_OFFERS;
+  if (!o.enabled || !o.title || !o.items.length) return { active: false };
+  if (o.validUntil && nairobiToday() > o.validUntil) return { active: false };
+  return { active: true, title: o.title, subtitle: o.subtitle, validUntil: o.validUntil, items: o.items };
+}
+
+app.get('/api/offers', wrap(async (req, res) => {
+  const st = await Setting.findOne({ key: 'offers' }).lean();
+  res.set('Cache-Control', 'public, max-age=60').json(publicOffer(st && st.value));
 }));
 
 app.get('/api/team', wrap(async (req, res) => {
@@ -542,6 +571,17 @@ admin.delete('/bookings/:id/payments/:pid', wrap(async (req, res) => {
 }));
 
 // Who the website sends email as, and where client replies arrive (shown in the admin panel).
+admin.get('/offers', wrap(async (req, res) => {
+  const st = await Setting.findOne({ key: 'offers' }).lean();
+  res.json(Object.assign({ saved: !!st }, st ? cleanOffers(st.value) : DEFAULT_OFFERS));
+}));
+admin.put('/offers', wrap(async (req, res) => {
+  const o = cleanOffers(req.body);
+  if (o.enabled && (!o.title || !o.items.length)) return bad(res, 'Add a title and at least one offer, or switch the offers off.');
+  await Setting.findOneAndUpdate({ key: 'offers' }, { value: o }, { upsert: true });
+  res.json({ success: true, offers: o });
+}));
+
 admin.get('/email-info', wrap(async (req, res) => {
   res.json({ enabled: !!mailer, from: env.MAIL_FROM || env.SMTP_USER || '', replyTo: env.NOTIFY_EMAIL || env.ADMIN_EMAIL || '' });
 }));
