@@ -57,6 +57,7 @@ Admin routes need the header `Authorization: Bearer <token>`.
 | GET | `/api/reviews` | Approved reviews for the website (public) |
 | GET | `/api/header` | Header strip data: your switched-on messages and the review average (public) |
 | GET | `/api/prices` | Website prices (public, set from the admin panel) |
+| GET | `/api/offers` | The running monthly offer (public). Returns `{active:false}` when switched off or past its last day |
 | GET | `/api/team` | Team members marked public: name, role, group and a picture link (no phone or email) |
 | GET | `/api/team/:id/photo` | A public team member's picture as an image |
 | POST | `/api/admin/login` | `{email, password}` returns `{token}` |
@@ -75,7 +76,8 @@ Admin routes need the header `Authorization: Bearer <token>`.
 | PUT/DELETE | `/api/admin/bookings/:id` | Edit / remove (`paid` and `balance` are calculated) |
 | POST | `/api/admin/bookings/:id/payments` | Record a payment `{amount, method, ref, date}` |
 | DELETE | `/api/admin/bookings/:id/payments/:pid` | Remove a payment |
-| GET/PUT | `/api/admin/prices` | Read / save the 11 website prices |
+| GET/PUT | `/api/admin/prices` | Read / save the website prices (the 11 main ones, plus engagement, birthday, graduation, church, event, graphic design and the four graduation packages) |
+| GET/PUT | `/api/admin/offers` | Read / save the monthly offer `{enabled, title, subtitle, validUntil, items:[{name, price, note}]}` (up to 8 items) |
 | GET | `/api/admin/reviews` | All reviews, newest first |
 | PATCH | `/api/admin/reviews/:id` | `{status}`: pending, approved or hidden |
 | DELETE | `/api/admin/reviews/:id` | Delete a review |
