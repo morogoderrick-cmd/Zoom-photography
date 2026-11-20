@@ -514,12 +514,6 @@ img.wa-pop::after{display:none;}
 .topbar.celebrate::after{content:"";position:absolute;left:0;right:0;bottom:-3px;height:3px;background:linear-gradient(90deg,#000 0 33.3%,#bb0000 33.3% 66.6%,#006600 66.6% 100%);}
 .topbar.celebrate .tb-dot{background:#bb0000;}
 .hero-badge.celebrate{border-color:transparent;background:linear-gradient(#0d0b08,#0d0b08) padding-box,linear-gradient(90deg,#000,#bb0000,#006600) border-box;border:2px solid transparent;color:#fff;font-weight:700;}
-/* phones and tablets: the hero is only as tall as its content, so there is no big empty gap above it */
-@media(max-width:900px){
-  #home{min-height:auto;align-items:flex-start;padding-top:calc(80px + var(--tb));padding-bottom:4.5rem;}
-  .hero-content{padding:2.4rem 1.4rem 0;}
-  .hero-scroll{display:none;}
-}
 /* team cards that follow the admin panel */
 .team-more[hidden]{display:none!important;}
 .tm-init{width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#14110c;color:var(--c);font-family:'Bebas Neue',sans-serif;font-size:2.4rem;letter-spacing:.06em;}
@@ -547,6 +541,39 @@ section#offers[hidden]{display:none;}
 .offer-price{font-family:'Bebas Neue',sans-serif;font-size:2.6rem;color:#d9b44a;line-height:1;}
 .offer-note{font-size:.7rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:.25rem .7rem;border-radius:50px;background:rgba(212,175,55,.18);color:#e6d3a3;}
 .offer-book{margin-top:.6rem;padding:.6rem 1.4rem;border-radius:50px;border:0;background:linear-gradient(135deg,#d9b44a,#c9803f);color:#120d06;font-weight:800;font-size:.8rem;cursor:pointer;}
+/* restored from your index_1.html: big logo at the top and the call-us block */
+@keyframes callPulse{0%,100%{box-shadow:0 4px 25px rgba(37,211,102,0.4);}50%{box-shadow:0 4px 35px rgba(37,211,102,0.7);}}
+@keyframes ringBell{0%,100%{transform:rotate(0);}25%{transform:rotate(-15deg);}75%{transform:rotate(15deg);}}
+/* ── PHONE CALL BUTTON (contact section) ── */
+.call-btn-wrap{
+  margin-top:2rem;
+  padding:1.5rem;
+  background:linear-gradient(135deg,rgba(37,211,102,0.1),rgba(18,140,126,0.1));
+  border:1px solid rgba(37,211,102,0.3);
+  border-radius:16px;
+  text-align:center;
+}
+.call-btn-label{
+  font-size:0.68rem;letter-spacing:0.25em;text-transform:uppercase;
+  color:rgba(255,255,255,0.45);font-weight:600;margin-bottom:0.8rem;
+  display:block;
+}
+.call-btn{
+  display:inline-flex;align-items:center;gap:0.8rem;
+  padding:1rem 2.5rem;
+  background:linear-gradient(135deg,#25d366,#128c7e);
+  color:var(--white);text-decoration:none;
+  border-radius:50px;font-weight:800;font-size:1rem;
+  letter-spacing:0.05em;
+  transition:transform 0.3s,box-shadow 0.3s;
+  box-shadow:0 4px 25px rgba(37,211,102,0.4);
+  animation:callPulse 2s ease-in-out infinite;
+}
+.call-btn:hover{transform:translateY(-3px);box-shadow:0 8px 35px rgba(37,211,102,0.6);}
+.call-btn-icon{font-size:1.3rem;animation:ringBell 1.5s ease-in-out infinite;}
+.call-btn-number{font-size:0.85rem;color:rgba(255,255,255,0.75);margin-top:0.5rem;display:block;letter-spacing:0.1em;}
+.hero-logo-wrap{margin-bottom:1.5rem;animation:fadeDown 0.8s ease 0.1s both;}
+.hero-logo-wrap img{height:130px;width:auto;object-fit:contain;filter:drop-shadow(0 4px 25px rgba(212,175,55,0.5));}
 </style>
 </head>
 <body>
@@ -590,6 +617,7 @@ section#offers[hidden]{display:none;}
   <div class="orb orb1"></div><div class="orb orb2"></div>
   <div class="orb orb3"></div><div class="orb orb4"></div>
   <div class="hero-content">
+    <div class="hero-logo-wrap"><img src="img/logo.webp" alt="ZOOM Photography & Videography"></div>
     <div class="hero-badge">📸 🎬 Premium Visual Studio — Est. 2018</div>
     <h1 class="hero-title">
       <span class="line1">ZOOM INTO</span>
@@ -1178,6 +1206,15 @@ section#offers[hidden]{display:none;}
       <div class="contact-detail"><div class="contact-detail-icon" style="overflow:hidden;padding:0;"><img src="img/7deff35e.webp" alt="WhatsApp" loading="lazy" decoding="async"></div><div><div class="detail-label">Phone &amp; WhatsApp</div><div class="detail-value"><a href="https://wa.me/254787593983">0787 593 983</a></div></div></div>
                         <div class="contact-detail"><div class="contact-detail-icon" style="background:linear-gradient(135deg,#f6e3a1,#e8912d);">🕐</div><div><div class="detail-label">Business Hours</div><div class="detail-value">Mon – Sat, 8am – 7pm EAT</div></div></div>
 
+      <!-- CALL BUTTON IN CONTACT SECTION -->
+      <div class="call-btn-wrap">
+        <span class="call-btn-label">📞 Prefer to talk? Call us directly!</span>
+        <a href="tel:+254787593983" class="call-btn">
+          <span class="call-btn-icon">📞</span>
+          Call Us Now
+        </a>
+        <span class="call-btn-number">0787 593 983</span>
+      </div>
 
     </div>
     <form class="contact-form-wrap" id="contactForm">
