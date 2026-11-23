@@ -69,5 +69,6 @@ const server = app.listen(0, async () => {
 
   server.close();
   console.log(failed ? `\n${failed} test(s) failed` : '\nAll checks passed');
+  
   process.exit(failed ? 1 : 0);
 });
