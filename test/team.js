@@ -50,5 +50,6 @@ const server = app.listen(0, async () => {
   const noauth = await call(port, 'POST', '/api/admin/team', { name: 'X' }, false);
   out.push(['adding needs login', noauth.code === 401]);
   out.forEach(r => console.log((r[1] ? 'PASS ' : 'FAIL ') + r[0]));
+  
   server.close(); process.exit(out.every(r => r[1]) ? 0 : 1);
 });
