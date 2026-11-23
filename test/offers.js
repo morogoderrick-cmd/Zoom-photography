@@ -35,5 +35,6 @@ const server = app.listen(0, async () => {
   const pp = await call(p, 'PUT', '/api/admin/prices', pr, true);
   out.push(['stores graphic design and graduation package prices', pp.code === 200 && pp.json.prices['graphic-design'] === 1500 && pp.json.prices['grad-4'] === 5000]);
   out.forEach(r => console.log((r[1] ? 'PASS ' : 'FAIL ') + r[0]));
+  
   server.close(); process.exit(out.every(r => r[1]) ? 0 : 1);
 });
